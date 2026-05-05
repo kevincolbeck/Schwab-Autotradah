@@ -1,0 +1,22 @@
+[Unit]
+Description=Equities Trading Bot
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/equities_bot
+Environment="PATH=/home/ubuntu/equities_bot/venv/bin:/usr/bin:/bin"
+ExecStart=/home/ubuntu/equities_bot/venv/bin/python -m backend.main
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=equities-bot
+
+# Give it time to cleanly close positions at EOD before killing
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
