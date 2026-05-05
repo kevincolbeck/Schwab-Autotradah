@@ -152,7 +152,7 @@ async def startup() -> None:
 async def _load_rvol_baselines() -> None:
     for ticker in ALL_TICKERS:
         try:
-            bars = await get_minute_bars(ticker, days=20)
+            bars = await get_minute_bars(ticker, days=10)
             get_rvol_monitor(ticker).load_historical(bars)
             logger.info(f"RVOL baseline loaded: {ticker}")
         except Exception as e:
