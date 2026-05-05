@@ -268,14 +268,17 @@ class IvHistory(Base):
 # ── Market snapshots ──────────────────────────────────────────────────────────
 
 class MarketSnapshot(Base):
-    """Full per-ticker market state every 60s. Used for walk-forward replay."""
+    """Full per-ticker market state every 15s. Used for walk-forward replay."""
     __tablename__ = "market_snapshots"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     ts: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
     ticker: Mapped[str] = mapped_column(String(10), index=True)
     price: Mapped[float] = mapped_column(Float)
+    bid: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    ask: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     vwap: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    dist_from_vwap_pct: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     rvol: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     iv_rank: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     vix: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
@@ -283,8 +286,22 @@ class MarketSnapshot(Base):
     gex_call_wall: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     gex_put_wall: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     gex_gamma_flip: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    gex_net: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    gex_proximity_pct: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     l2_imbalance: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    l2_bid_wall_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    l2_bid_wall_size: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    l2_ask_wall_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    l2_ask_wall_size: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
     footprint_delta_1m: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    footprint_delta_5m: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    footprint_absorption: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    footprint_absorption_side: Mapped[Optional[str]] = mapped_column(String(10), nullable=True)
+    sweep_detected: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    sweep_direction: Mapped[Optional[str]] = mapped_column(String(5), nullable=True)
+    large_print_detected: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    large_print_direction: Mapped[Optional[str]] = mapped_column(String(5), nullable=True)
+    time_window: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
 
 
 # ── Bot state ──────────────────────────────────────────────────────────────────
@@ -327,6 +344,30 @@ async def get_db():
 async def init_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        # Migrate existing market_snapshots table — add new columns if missing.
+        # SQLite raises OperationalError if column exists; we swallow that.
+        new_columns = [
+            ("bid", "REAL"), ("ask", "REAL"),
+            ("dist_from_vwap_pct", "REAL"),
+            ("gex_net", "REAL"), ("gex_proximity_pct", "REAL"),
+            ("l2_bid_wall_price", "REAL"), ("l2_bid_wall_size", "REAL"),
+            ("l2_ask_wall_price", "REAL"), ("l2_ask_wall_size", "REAL"),
+            ("footprint_delta_5m", "REAL"),
+            ("footprint_absorption", "INTEGER"), ("footprint_absorption_side", "TEXT"),
+            ("sweep_detected", "INTEGER"), ("sweep_direction", "TEXT"),
+            ("large_print_detected", "INTEGER"), ("large_print_direction", "TEXT"),
+            ("time_window", "TEXT"),
+        ]
+        for col, col_type in new_columns:
+            try:
+                await conn.execute(
+                    __import__("sqlalchemy").text(
+                        f"ALTER TABLE market_snapshots ADD COLUMN {col} {col_type}"
+                    )
+                )
+            except Exception:
+                pass  # column already exists
+
     async with AsyncSessionLocal() as session:
         from sqlalchemy import select
         result = await session.execute(select(BotState).where(BotState.id == 1))

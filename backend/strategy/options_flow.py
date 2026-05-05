@@ -86,6 +86,12 @@ class OptionsFlowMonitor:
         self._open_interest: dict[str, dict[float, int]] = defaultdict(dict)
         # last events per underlying
         self._flow_state: dict[str, FlowState] = defaultdict(FlowState)
+        # Optional archive callback: fn(ticker, event_type, direction, ...)
+        self._archive_cb = None
+
+    def set_archive_callback(self, cb) -> None:
+        """Register callback for persisting flow events to DuckDB."""
+        self._archive_cb = cb
 
     def update_open_interest(self, underlying: str, chain_data: dict) -> None:
         """Called after each options chain poll to update OI per strike."""
@@ -150,19 +156,29 @@ class OptionsFlowMonitor:
         # Sweep detection
         if oi > 0 and (strike_vol / oi) >= SWEEP_VOL_OI_RATIO:
             direction = "LONG" if latest_tick["opt_type"] == "CALL" else "SHORT"
+            ratio = strike_vol / oi
             event = FlowEvent(
                 ts=ts, underlying=underlying, option_symbol=latest_tick["symbol"],
                 side=latest_tick["opt_type"], direction=direction,
                 strike=strike, price=latest_tick["price"], size=latest_tick["size"],
                 notional=latest_tick["notional"], event_type="SWEEP",
-                vol_oi_ratio=strike_vol / oi,
+                vol_oi_ratio=ratio,
             )
             state.last_sweep = event
             state.sweep_detected = True
             state.sweep_direction = direction
             state.sweep_age_seconds = 0
             logger.info(f"OPTIONS SWEEP {underlying}: {direction} on {strike} "
-                        f"vol/OI={strike_vol/oi:.1f}x")
+                        f"vol/OI={ratio:.1f}x")
+            if self._archive_cb:
+                try:
+                    self._archive_cb(
+                        underlying, "SWEEP", direction, latest_tick["symbol"],
+                        strike, latest_tick["price"], latest_tick["size"],
+                        latest_tick["notional"], ratio, latest_tick["opt_type"], ts,
+                    )
+                except Exception:
+                    pass
 
         # Large print detection
         if latest_tick["notional"] >= LARGE_PRINT_NOTIONAL:
@@ -179,6 +195,15 @@ class OptionsFlowMonitor:
             state.large_print_age_seconds = 0
             logger.info(f"LARGE PRINT {underlying}: ${latest_tick['notional']:,.0f} "
                         f"{direction} on {strike}")
+            if self._archive_cb:
+                try:
+                    self._archive_cb(
+                        underlying, "LARGE_PRINT", direction, latest_tick["symbol"],
+                        strike, latest_tick["price"], latest_tick["size"],
+                        latest_tick["notional"], None, latest_tick["opt_type"], ts,
+                    )
+                except Exception:
+                    pass
 
     def get_state(self, ticker: str) -> FlowState:
         now = time.time()

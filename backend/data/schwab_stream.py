@@ -193,13 +193,15 @@ class SchwabStreamClient:
 
     async def _subscribe_all(self, ws, customer_id: str, correl_id: str) -> None:
         ticker_str = ",".join(ALL_TICKERS)
+        # Include $VIX so vix_monitor receives live VIX updates for regime classification
+        l1_keys    = ticker_str + ",$VIX"
         nyse_str   = ",".join(t for t in ALL_TICKERS if t in NYSE_LISTED)
         nasdaq_str = ",".join(t for t in ALL_TICKERS if t in NASDAQ_LISTED)
 
         subs = [
-            # L1 quotes
+            # L1 quotes (equities + VIX index)
             self._make_request("LEVELONE_EQUITIES", "SUBS",
-                {"keys": ticker_str, "fields": ",".join(str(k) for k in L1_EQUITY_FIELDS)},
+                {"keys": l1_keys, "fields": ",".join(str(k) for k in L1_EQUITY_FIELDS)},
                 customer_id, correl_id),
             # Trade ticks
             self._make_request("TIMESALE_EQUITY", "SUBS",

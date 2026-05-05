@@ -207,9 +207,11 @@ class OpeningPlayAnalyzer:
 
         if state.direction:
             state.queued = True
+            gap_str = f"{gap_pct:.3%}" if gap_pct is not None else "n/a"
+            mom_str = f"{pm_momentum:.3%}" if pm_momentum is not None else "n/a"
             logger.info(
                 f"OpeningPlay: {ticker} {state.direction} queued "
-                f"(conviction={score}, gap={gap_pct:.3%}, momentum={pm_momentum:.3%}, "
+                f"(conviction={score}, gap={gap_str}, momentum={mom_str}, "
                 f"l2={l2_direction}, gex_blocking={gex_blocking})"
             )
         else:

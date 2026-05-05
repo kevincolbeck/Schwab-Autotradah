@@ -75,6 +75,13 @@ class FootprintBuilder:
         self._divergence_bars: int = 0         # consecutive bars with absorption
         self._divergence_side: Optional[str] = None
 
+        # Optional callback fired when a candle closes — used for DuckDB archival
+        self._on_close_cb = None
+
+    def set_on_close_callback(self, cb) -> None:
+        """Register a callback called with the closed FootprintCandle."""
+        self._on_close_cb = cb
+
     def update_quote(self, bid: float, ask: float) -> None:
         """Called when the L1 quote updates — needed for tick rule."""
         self._last_bid = bid
@@ -128,6 +135,11 @@ class FootprintBuilder:
             self._closed.pop(0)
         self._current = None
         self._update_divergence()
+        if self._on_close_cb and c.total_volume > 0:
+            try:
+                self._on_close_cb(c)
+            except Exception:
+                pass
 
     def _classify_tick(self, price: float) -> str:
         """

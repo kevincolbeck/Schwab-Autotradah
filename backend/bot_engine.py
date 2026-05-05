@@ -91,6 +91,7 @@ _premarket_date: Optional[date] = None
 _pre_open_snapshot_done: bool = False   # 9:25 AM price snapshots taken
 _pre_open_evaluated: bool = False       # 9:29:30 opening play assessment run
 _opening_plays_fired: bool = False      # 9:30 AM queued plays executed
+_eod_reset_done: bool = False           # daily reset only fires once at EOD
 
 # ── Startup ───────────────────────────────────────────────────────────────────
 
@@ -122,15 +123,35 @@ async def startup() -> None:
                 tick_archive.write_tick(t, price, size, side, ts)
             return _cb
 
+        # Keep footprint's bid/ask current for accurate Lee-Ready tick classification
+        def _make_fp_quote_cb(t, builder):
+            def _cb(symbol, quote):
+                if symbol != t:
+                    return
+                bid = float(quote.get("bid", 0) or 0)
+                ask = float(quote.get("ask", 0) or 0)
+                if bid > 0 and ask > 0:
+                    builder.update_quote(bid, ask)
+            return _cb
+
         stream_client.on_equity_tick(_make_tick_cb(ticker))
         stream_client.on_equity_tick(fp.on_tick)
         stream_client.on_equity_tick(vwap.on_tick)
         stream_client.on_equity_tick(or_tracker.on_tick)
         stream_client.on_l2_update(ob.on_l2_update)
         stream_client.on_quote_update(rvol.on_quote_update)
+        stream_client.on_quote_update(_make_fp_quote_cb(ticker, fp))
 
     stream_client.on_quote_update(vix_monitor.on_quote_update)
     stream_client.on_option_tick(options_flow_monitor.on_option_tick)
+
+    # Wire footprint candle archival — each closed candle → DuckDB
+    for ticker in ALL_TICKERS:
+        fp = get_footprint(ticker)
+        fp.set_on_close_callback(tick_archive.write_footprint_candle)
+
+    # Wire options flow events → DuckDB
+    options_flow_monitor.set_archive_callback(tick_archive.write_options_flow_event)
 
     # Register fast-path triggers on footprint absorption
     for ticker in ALL_TICKERS:
@@ -214,11 +235,12 @@ async def run_premarket_prep() -> None:
 
     _premarket_done = True
     _premarket_date = date.today()
-    # Reset daily opening-play flags for the new day
-    global _pre_open_snapshot_done, _pre_open_evaluated, _opening_plays_fired
+    # Reset daily flags for the new day
+    global _pre_open_snapshot_done, _pre_open_evaluated, _opening_plays_fired, _eod_reset_done
     _pre_open_snapshot_done = False
     _pre_open_evaluated = False
     _opening_plays_fired = False
+    _eod_reset_done = False
     opening_play_analyzer.reset_day()
     logger.info("PRE-MARKET PREP COMPLETE — Pre-open watch begins at 9:25 ET")
 
@@ -300,16 +322,26 @@ async def _persist_gex_snapshot(ticker: str, gex: GexLevels) -> None:
 
 async def _persist_market_snapshot(ticker: str, price: float, gex: Optional[GexLevels]) -> None:
     from backend.strategy.iv_rank import get_iv_rank
-    iv_rank = await get_iv_rank(ticker)
-    rvol    = get_rvol_monitor(ticker).get_rvol()
-    vwap    = get_vwap_calc(ticker).get_vwap()
-    fp      = get_footprint(ticker)
-    ob      = get_ob(ticker).get_state()
+    iv_rank  = await get_iv_rank(ticker)
+    rvol     = get_rvol_monitor(ticker).get_rvol()
+    vwap_calc = get_vwap_calc(ticker)
+    vwap     = vwap_calc.get_vwap()
+    fp       = get_footprint(ticker)
+    ob       = get_ob(ticker).get_state()
+    flow     = options_flow_monitor.get_state(ticker)
+    quote    = stream_client.get_quote(ticker)
+    absorbed, abs_side = fp.get_absorption()
+    prox_pct = None
+    if gex:
+        prox_pct, _ = gex.proximity_to_nearest_wall()
     async with AsyncSessionLocal() as session:
         session.add(MarketSnapshot(
             ticker=ticker,
             price=price,
+            bid=float(quote.get("bid", 0) or 0) or None,
+            ask=float(quote.get("ask", 0) or 0) or None,
             vwap=vwap,
+            dist_from_vwap_pct=vwap_calc.dist_from_vwap_pct(price),
             rvol=rvol,
             iv_rank=iv_rank,
             vix=get_vix(),
@@ -317,8 +349,22 @@ async def _persist_market_snapshot(ticker: str, price: float, gex: Optional[GexL
             gex_call_wall=gex.call_wall if gex else None,
             gex_put_wall=gex.put_wall if gex else None,
             gex_gamma_flip=gex.gamma_flip if gex else None,
+            gex_net=gex.net_gex if gex else None,
+            gex_proximity_pct=prox_pct,
             l2_imbalance=ob.imbalance,
+            l2_bid_wall_price=ob.bid_wall_price or None,
+            l2_bid_wall_size=ob.bid_wall_size or None,
+            l2_ask_wall_price=ob.ask_wall_price or None,
+            l2_ask_wall_size=ob.ask_wall_size or None,
             footprint_delta_1m=fp.get_delta_1m(),
+            footprint_delta_5m=fp.get_delta_5m(),
+            footprint_absorption=absorbed,
+            footprint_absorption_side=abs_side,
+            sweep_detected=flow.is_sweep_fresh(),
+            sweep_direction=flow.sweep_direction,
+            large_print_detected=flow.is_large_print_fresh(),
+            large_print_direction=flow.large_print_direction,
+            time_window=current_window(),
         ))
         await session.commit()
 
@@ -354,6 +400,21 @@ async def _eval_ticker(ticker: str) -> None:
 
     await _persist_market_snapshot(ticker, price, gex)
     _last_eval[ticker] = now_ts
+
+    # Persist L2 and quote snapshots to DuckDB for walk-forward analysis
+    ob_state = get_ob(ticker).get_state()
+    tick_archive.write_l2_snapshot(ticker, ob_state)
+    rvol_val = get_rvol_monitor(ticker).get_rvol()
+    vwap_val = get_vwap_calc(ticker).get_vwap()
+    tick_archive.write_quote_snapshot(
+        ticker,
+        bid=float(quote.get("bid", 0) or 0),
+        ask=float(quote.get("ask", 0) or 0),
+        last=price,
+        volume=int(quote.get("total_volume", 0) or 0),
+        vwap=vwap_val,
+        rvol=rvol_val,
+    )
 
     # Check if price is now within fast-path proximity of GEX wall
     if gex:
@@ -458,7 +519,7 @@ async def _fire_opening_plays() -> None:
 async def _eval_loop() -> None:
     """Main loop: fires every 2s, evaluates each ticker on its own schedule."""
     global _premarket_done, _premarket_date
-    global _pre_open_snapshot_done, _pre_open_evaluated, _opening_plays_fired
+    global _pre_open_snapshot_done, _pre_open_evaluated, _opening_plays_fired, _eod_reset_done
 
     while True:
         await asyncio.sleep(2)
@@ -500,9 +561,12 @@ async def _eval_loop() -> None:
             await asyncio.sleep(5)
             continue
 
-        # Hard close at 3:58 ET
+        # Hard close at 3:58 ET — close positions once, reset day once
         if is_hard_close_time():
             await _hard_close_all()
+            if not _eod_reset_done:
+                await paper_trader.reset_day()
+                _eod_reset_done = True
             await asyncio.sleep(120)
             continue
 
@@ -563,9 +627,10 @@ async def _position_check_loop() -> None:
 # ── Hard EOD close ────────────────────────────────────────────────────────────
 
 async def _hard_close_all() -> None:
+    """Force-close all paper positions. Does NOT reset day — call reset_day() separately at true EOD."""
     if not paper_trader.positions:
         return
-    logger.warning(f"HARD EOD CLOSE: closing {len(paper_trader.positions)} positions")
+    logger.warning(f"HARD CLOSE: closing {len(paper_trader.positions)} positions")
     for pos in list(paper_trader.positions.values()):
         quote = dict(stream_client.option_quotes.get(pos.option_symbol, {}))
         if not quote:
@@ -576,14 +641,14 @@ async def _hard_close_all() -> None:
             "EOD_FORCE",
             quote,
         )
-    await paper_trader.reset_day()
 
 
 async def emergency_close_all() -> int:
-    """Close all positions immediately. Called from /api/bot/emergency-close."""
+    """Close all positions immediately at current market price. Does not affect daily reset."""
     count = len(paper_trader.positions)
-    await _hard_close_all()
-    logger.warning(f"EMERGENCY CLOSE: closed {count} positions")
+    if count:
+        logger.warning(f"EMERGENCY CLOSE: closing {count} positions")
+        await _hard_close_all()
     return count
 
 

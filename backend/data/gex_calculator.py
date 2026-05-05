@@ -161,8 +161,9 @@ async def compute_gex(ticker: str) -> Optional[GexLevels]:
             net_gex_regime="POSITIVE" if net_gex >= 0 else "NEGATIVE",
             per_strike=net_by_strike,
         )
+        flip_str = f"{gamma_flip:.2f}" if gamma_flip is not None else "None"
         logger.debug(f"GEX {ticker}: call_wall={call_wall}, put_wall={put_wall}, "
-                     f"flip={gamma_flip:.2f}, net={net_gex:.0f}")
+                     f"flip={flip_str}, net={net_gex:.0f}")
         return levels
 
     except Exception as e:

@@ -157,18 +157,17 @@ class PaperTrader:
         bid = option["bid"]
         slippage = SLIPPAGE.get(ticker, SLIPPAGE["DEFAULT"])
 
-        # Simulate buying at ask + slippage
-        fill_price = ask + slippage
+        # Simulate buying at ask (SPY/QQQ) or ask + extra slippage (Mag7).
+        # Slippage is tracked as a separate P&L line item — NOT baked into fill_price.
+        fill_price = ask
         if fill_price <= 0:
             return None
 
         # Position sizing
-        risk_usd = self._account_balance * 0.0025
         from backend.config import settings
-        vix_mod = 1.0
         from backend.strategy.vix_regime import size_modifier
-        vix_mod = size_modifier()
-        risk_usd *= vix_mod
+        risk_usd = self._account_balance * settings.risk_per_trade_pct
+        risk_usd *= size_modifier()
 
         max_premium = risk_usd / settings.option_stop_loss_pct
         contracts = max(1, int(max_premium / (fill_price * 100)))
@@ -318,12 +317,12 @@ class PaperTrader:
         ticker = pos.ticker
         slippage = SLIPPAGE.get(ticker, SLIPPAGE["DEFAULT"])
 
-        # Simulate selling at bid - slippage
+        # Sell at bid. Slippage tracked separately as a transaction cost.
         bid = float(quote.get("bid", current_mid) or current_mid)
-        fill_price = max(0.01, bid - slippage)
+        fill_price = max(0.01, bid)
 
         gross_pnl = (fill_price - pos.entry_price) * pos.contracts * 100
-        slippage_cost = slippage * pos.contracts * 100 * 2   # entry + exit
+        slippage_cost = slippage * pos.contracts * 100 * 2   # entry + exit round-trip
         commission_cost = pos.contracts * COMMISSION_PER_CONTRACT * 2
         net_pnl = gross_pnl - slippage_cost - commission_cost
 
