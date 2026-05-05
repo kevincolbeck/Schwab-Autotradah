@@ -31,7 +31,7 @@ from backend.config import (
 from backend.database import init_db, AsyncSessionLocal, BotState, MarketSnapshot, GexSnapshot
 from backend.data.schwab_stream import stream_client
 from backend.data.schwab_rest import get_options_chain, get_minute_bars, get_quote
-from backend.data.gex_calculator import compute_gex, GexLevels
+from backend.data.gex_calculator import compute_gex, compute_gex_from_chain, GexLevels
 from backend.data.event_calendar import refresh_earnings_cache
 from backend.data.tick_archive import tick_archive
 from backend.strategy.time_filter import is_market_open, is_hard_close_time, current_window
@@ -77,10 +77,8 @@ def is_bot_paused() -> bool:
 # ── Caches ────────────────────────────────────────────────────────────────────
 _gex_cache: dict[str, tuple[GexLevels, float]] = {}
 _prev_gex: dict[str, GexLevels] = {}   # GEX from prior refresh — used for breakout detection
-_GEX_REFRESH_SECONDS = 300
-
 _chain_cache: dict[str, tuple[dict, float]] = {}
-_CHAIN_REFRESH_SECONDS = 60
+_DATA_REFRESH_SECONDS = 30              # single chain fetch drives both GEX + chain
 
 _last_eval: dict[str, float] = {}        # ticker → last eval timestamp
 _fast_path_pending: set[str] = set()     # tickers flagged for immediate eval
@@ -330,50 +328,47 @@ async def run_premarket_prep() -> None:
 
 # ── GEX / chain refresh helpers ───────────────────────────────────────────────
 
-async def _refresh_gex_if_needed(ticker: str, now_ts: float) -> Optional[GexLevels]:
+async def _refresh_data(ticker: str) -> tuple[dict, Optional[GexLevels]]:
+    """Fetch chain once every 30s and derive both chain data and GEX from it."""
     global _prev_gex
     import time as _time
-    cached = _gex_cache.get(ticker)
-    if cached and (_time.time() - cached[1]) < _GEX_REFRESH_SECONDS:
-        return cached[0]
-    gex = await compute_gex(ticker)
+    now_ts = _time.time()
+
+    chain_cached = _chain_cache.get(ticker)
+    gex_cached   = _gex_cache.get(ticker)
+
+    if chain_cached and (now_ts - chain_cached[1]) < _DATA_REFRESH_SECONDS:
+        return chain_cached[0], gex_cached[0] if gex_cached else None
+
+    try:
+        chain = await get_options_chain(ticker, contract_type="ALL", strike_count=60)
+    except Exception as e:
+        logger.warning(f"Chain fetch failed for {ticker}: {e}")
+        return (chain_cached[0] if chain_cached else {}), (gex_cached[0] if gex_cached else None)
+
+    fetch_ts = _time.time()
+    _chain_cache[ticker] = (chain, fetch_ts)
+
+    # Derive GEX from the already-fetched chain — no second REST call
+    gex = compute_gex_from_chain(ticker, chain)
     if gex:
-        if cached:
-            _prev_gex[ticker] = cached[0]   # save before overwriting
-        _gex_cache[ticker] = (gex, _time.time())
+        if gex_cached:
+            _prev_gex[ticker] = gex_cached[0]
+        _gex_cache[ticker] = (gex, fetch_ts)
         await _persist_gex_snapshot(ticker, gex)
-        # Sync into key levels
         quote = stream_client.get_quote(ticker)
         price = float(quote.get("last", 0) or 0)
         if price:
             update_gex_in_key_levels(ticker, gex, price)
-    return gex if gex else (cached[0] if cached else None)
 
+    # Side-effects from chain
+    options_flow_monitor.update_open_interest(ticker, chain)
+    spot = chain.get("underlyingPrice", 0)
+    if spot:
+        await record_daily_iv(ticker, chain, float(spot))
+        await _subscribe_atm_options(ticker, chain, float(spot))
 
-async def _refresh_chain_if_needed(ticker: str) -> dict:
-    import time as _time
-    cached = _chain_cache.get(ticker)
-    if cached and (_time.time() - cached[1]) < _CHAIN_REFRESH_SECONDS:
-        return cached[0]
-    try:
-        chain = await get_options_chain(ticker)
-        _chain_cache[ticker] = (chain, _time.time())
-        options_flow_monitor.update_open_interest(ticker, chain)
-        spot = chain.get("underlyingPrice", 0)
-        if spot:
-            fp = get_footprint(ticker)
-            q = stream_client.get_quote(ticker)
-            bid = float(q.get("bid", 0) or 0)
-            ask = float(q.get("ask", 0) or 0)
-            if bid and ask:
-                fp.update_quote(bid, ask)
-            await record_daily_iv(ticker, chain, float(spot))
-            # Re-subscribe as price drifts — picks up newly ATM strikes
-            await _subscribe_atm_options(ticker, chain, float(spot))
-        return chain
-    except Exception as e:
-        logger.warning(f"Chain refresh failed for {ticker}: {e}")
-        return cached[0] if cached else {}
+    return chain, gex if gex else (gex_cached[0] if gex_cached else None)
 
 
 async def _get_streamer_info_cached() -> dict:
@@ -464,8 +459,7 @@ async def _eval_ticker(ticker: str) -> None:
     if price <= 0:
         return
 
-    gex   = await _refresh_gex_if_needed(ticker, now_ts)
-    chain = await _refresh_chain_if_needed(ticker)
+    chain, gex = await _refresh_data(ticker)
 
     signal = await evaluate_ticker(ticker, price, gex, prev_gex=_prev_gex.get(ticker), paused=_bot_paused)
 
@@ -569,7 +563,7 @@ async def _fire_opening_plays() -> None:
             price = float(q.get("last", 0) or q.get("ask", 0) or 0)
             if price <= 0:
                 continue
-            chain = await _refresh_chain_if_needed(ticker)
+            chain, _ = await _refresh_data(ticker)
             if not chain:
                 logger.warning(f"Opening play: no chain for {ticker}, skipping")
                 continue
@@ -614,7 +608,7 @@ async def _eval_loop() -> None:
     global _pre_open_snapshot_done, _pre_open_evaluated, _opening_plays_fired, _eod_reset_done
 
     while True:
-        await asyncio.sleep(2)
+        await asyncio.sleep(0.5)
 
         now_et = datetime.now(ET)
         today  = now_et.date()

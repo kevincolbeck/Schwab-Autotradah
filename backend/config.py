@@ -107,8 +107,8 @@ SLIPPAGE = {
 COMMISSION_PER_CONTRACT = 0.65      # Schwab standard
 
 # Evaluation intervals (seconds)
-EVAL_INTERVAL_SECONDS       = 15    # baseline eval cycle
-POSITION_CHECK_INTERVAL_SEC = 5     # how often open positions are checked for SL/TP
+EVAL_INTERVAL_SECONDS       = 2     # baseline eval cycle
+POSITION_CHECK_INTERVAL_SEC = 1     # how often open positions are checked for SL/TP
 
 # Fast-path thresholds — trigger immediate eval when these are breached in the stream
 FAST_PATH_GEX_PROXIMITY_PCT = 0.0015   # 0.15% from wall → skip waiting for next cycle
