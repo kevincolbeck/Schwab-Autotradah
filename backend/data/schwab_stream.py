@@ -85,6 +85,31 @@ class SchwabStreamClient:
         """Register callback for L1 quote updates: fn(symbol, quote_dict)"""
         self._quote_callbacks.append(fn)
 
+    def _call(self, cb: Callable, *args) -> None:
+        result = cb(*args)
+        if asyncio.iscoroutine(result):
+            asyncio.create_task(result)
+
+    @staticmethod
+    def _parse_book_side(raw) -> list:
+        if not isinstance(raw, list):
+            return []
+        result = []
+        for entry in raw:
+            try:
+                if isinstance(entry, dict):
+                    price = float(entry.get("0", entry.get(0, 0)))
+                    size  = float(entry.get("1", entry.get(1, 0)))
+                elif isinstance(entry, (list, tuple)) and len(entry) >= 2:
+                    price, size = float(entry[0]), float(entry[1])
+                else:
+                    continue
+                if price > 0 and size > 0:
+                    result.append([price, size])
+            except (ValueError, TypeError, KeyError):
+                continue
+        return result
+
     def get_quote(self, symbol: str) -> dict:
         return self.quotes.get(symbol, {})
 
@@ -240,7 +265,7 @@ class SchwabStreamClient:
             q["symbol"] = symbol
             self.quotes[symbol].update(q)
             for cb in self._quote_callbacks:
-                asyncio.create_task(cb(symbol, self.quotes[symbol]))
+                self._call(cb, symbol, self.quotes[symbol])
 
     async def _handle_equity_tick(self, content: list) -> None:
         ts = time.time()
@@ -251,17 +276,19 @@ class SchwabStreamClient:
             if not symbol or price <= 0:
                 continue
             for cb in self._equity_tick_callbacks:
-                asyncio.create_task(cb(symbol, price, size, ts))
+                self._call(cb, symbol, price, size, ts)
 
     async def _handle_l2(self, content: list) -> None:
         for item in content:
+            if not isinstance(item, dict):
+                continue
             symbol = item.get("key", item.get("0", ""))
-            bids   = item.get("1", [])   # list of [price, size, count]
-            asks   = item.get("2", [])
             if not symbol:
                 continue
+            bids = self._parse_book_side(item.get("1", []))
+            asks = self._parse_book_side(item.get("2", []))
             for cb in self._l2_callbacks:
-                asyncio.create_task(cb(symbol, bids, asks))
+                self._call(cb, symbol, bids, asks)
 
     def _handle_l1_options(self, content: list) -> None:
         for item in content:
@@ -282,7 +309,7 @@ class SchwabStreamClient:
             if not symbol or price <= 0:
                 continue
             for cb in self._option_tick_callbacks:
-                asyncio.create_task(cb(symbol, price, size, ts))
+                self._call(cb, symbol, price, size, ts)
 
 
 # Singleton

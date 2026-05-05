@@ -111,7 +111,7 @@ async def get_daily_bars(symbol: str, days: int = 30) -> list[dict]:
     return data.get("candles", [])
 
 
-async def get_minute_bars(symbol: str, days: int = 20) -> list[dict]:
+async def get_minute_bars(symbol: str, days: int = 10) -> list[dict]:
     """Returns list of 1-minute OHLCV dicts for RVOL baseline."""
     data = await get_price_history(
         symbol,
