@@ -84,6 +84,7 @@ _CHAIN_REFRESH_SECONDS = 60
 _last_eval: dict[str, float] = {}        # ticker → last eval timestamp
 _fast_path_pending: set[str] = set()     # tickers flagged for immediate eval
 _streamer_info_cache: dict = {}
+_subscribed_option_symbols: set[str] = set()   # OCC symbols with active TIMESALE_OPTIONS sub
 
 _premarket_done: bool = False
 _premarket_date: Optional[date] = None
@@ -181,6 +182,73 @@ async def _load_rvol_baselines() -> None:
         await asyncio.sleep(0.5)
 
 
+# ── Options tape subscription helpers ────────────────────────────────────────
+
+def _build_atm_option_symbols(chain: dict, spot: float, n_strikes: int = 8) -> list[str]:
+    """
+    Build OCC option symbols for near-ATM strikes across the front 2 expirations.
+    Subscribing to these at startup gives the options_flow_monitor live tape data
+    for sweep and large print detection — the same view a real desk has all day.
+    """
+    if not chain or spot <= 0:
+        return []
+
+    underlying = chain.get("symbol", "").strip()
+    if not underlying:
+        return []
+
+    call_map = chain.get("callExpDateMap", {})
+
+    # Sort expiration keys by date and take the front 2
+    exp_keys = sorted(call_map.keys(), key=lambda k: k.split(":")[0])[:2]
+
+    symbols = []
+    for exp_key in exp_keys:
+        date_str = exp_key.split(":")[0]   # "2026-05-09:4" → "2026-05-09"
+        try:
+            from datetime import date as _date
+            exp_dt = _date.fromisoformat(date_str)
+            yymmdd = exp_dt.strftime("%y%m%d")
+        except Exception:
+            continue
+
+        all_strikes = sorted(float(s.split(":")[0]) for s in call_map[exp_key])
+        if not all_strikes:
+            continue
+
+        atm_idx = min(range(len(all_strikes)), key=lambda i: abs(all_strikes[i] - spot))
+        lo = max(0, atm_idx - n_strikes)
+        hi = min(len(all_strikes), atm_idx + n_strikes + 1)
+
+        for strike in all_strikes[lo:hi]:
+            strike_int = int(round(strike * 1000))
+            padded = f"{underlying:<6}"
+            for opt_type in ("C", "P"):
+                symbols.append(f"{padded}{yymmdd}{opt_type}{strike_int:08d}")
+
+    return symbols
+
+
+async def _subscribe_atm_options(ticker: str, chain: dict, spot: float) -> None:
+    """Subscribe to TIMESALE_OPTIONS for near-ATM strikes not yet subscribed."""
+    global _subscribed_option_symbols
+    candidates = _build_atm_option_symbols(chain, spot)
+    new_syms = [s for s in candidates if s not in _subscribed_option_symbols]
+    if not new_syms:
+        return
+    try:
+        info = await _get_streamer_info_cached()
+        await stream_client.subscribe_options(
+            new_syms,
+            info.get("schwabClientCustomerId", ""),
+            info.get("schwabClientCorrelId", ""),
+        )
+        _subscribed_option_symbols.update(new_syms)
+        logger.info(f"Options tape: subscribed {len(new_syms)} ATM contracts for {ticker}")
+    except Exception as e:
+        logger.warning(f"Options tape subscription failed for {ticker}: {e}")
+
+
 # ── Pre-market routine ────────────────────────────────────────────────────────
 
 async def run_premarket_prep() -> None:
@@ -222,6 +290,9 @@ async def run_premarket_prep() -> None:
                 options_flow_monitor.update_open_interest(ticker, chain)
                 if price:
                     await record_daily_iv(ticker, chain, price)
+                    # Subscribe to ATM options tape so sweep/large print detection
+                    # is live from the open, not just after a paper trade fires.
+                    await _subscribe_atm_options(ticker, chain, price)
 
             logger.info(
                 f"  {ticker}: price={price:.2f} | "
@@ -236,11 +307,12 @@ async def run_premarket_prep() -> None:
     _premarket_done = True
     _premarket_date = date.today()
     # Reset daily flags for the new day
-    global _pre_open_snapshot_done, _pre_open_evaluated, _opening_plays_fired, _eod_reset_done
+    global _pre_open_snapshot_done, _pre_open_evaluated, _opening_plays_fired, _eod_reset_done, _subscribed_option_symbols
     _pre_open_snapshot_done = False
     _pre_open_evaluated = False
     _opening_plays_fired = False
     _eod_reset_done = False
+    _subscribed_option_symbols = set()
     opening_play_analyzer.reset_day()
     logger.info("PRE-MARKET PREP COMPLETE — Pre-open watch begins at 9:25 ET")
 
@@ -289,6 +361,8 @@ async def _refresh_chain_if_needed(ticker: str) -> dict:
             if bid and ask:
                 fp.update_quote(bid, ask)
             await record_daily_iv(ticker, chain, float(spot))
+            # Re-subscribe as price drifts — picks up newly ATM strikes
+            await _subscribe_atm_options(ticker, chain, float(spot))
         return chain
     except Exception as e:
         logger.warning(f"Chain refresh failed for {ticker}: {e}")
