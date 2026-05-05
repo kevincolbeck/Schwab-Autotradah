@@ -444,6 +444,10 @@ def _select_option(ticker: str, direction: str, chain_data: dict) -> Optional[di
             sym   = c.get("symbol", "")
             if bid <= 0 or ask <= 0:
                 continue
+            # Reject contracts with a spread wider than 25% of ask —
+            # wide spreads at the open would simulate an immediate unrealistic loss.
+            if (ask - bid) / ask > 0.25:
+                continue
             dist = abs(abs(delta) - abs(target_delta))
             if dist < best_delta_dist:
                 best_delta_dist = dist

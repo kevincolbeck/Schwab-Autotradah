@@ -572,9 +572,10 @@ async def _fire_opening_plays() -> None:
             pos = await paper_trader.try_open(signal, chain, q)
             if pos:
                 opening_play_analyzer.mark_fired(ticker)
+                gap_str = f"{state.gap_pct:.3%}" if state.gap_pct is not None else "n/a"
                 logger.info(
                     f"Opening play FIRED: {ticker} {state.direction} "
-                    f"conviction={state.conviction} gap={state.gap_pct:.3%}"
+                    f"conviction={state.conviction} gap={gap_str}"
                 )
                 info = await _get_streamer_info_cached()
                 await stream_client.subscribe_options(
