@@ -119,39 +119,27 @@ def _find_gamma_flip(per_strike: dict, spot_price: float) -> Optional[float]:
     return None
 
 
-async def compute_gex(ticker: str) -> Optional[GexLevels]:
-    """Fetch options chain and compute GEX levels. Returns None on error."""
+def compute_gex_from_chain(ticker: str, chain: dict) -> Optional[GexLevels]:
+    """Compute GEX from a pre-fetched chain dict (avoids a duplicate REST call)."""
     try:
-        chain = await get_options_chain(ticker, contract_type="ALL", strike_count=60)
         underlying = chain.get("underlyingPrice", 0)
         if not underlying:
-            logger.warning(f"GEX: no underlying price for {ticker}")
             return None
-
         spot_price = float(underlying)
         per_strike = _parse_chain(chain, spot_price)
-
         if not per_strike:
-            logger.warning(f"GEX: empty chain for {ticker}")
             return None
-
         net_by_strike = {
             s: per_strike[s]["call_gex"] + per_strike[s]["put_gex"]
             for s in per_strike
         }
         net_gex = sum(net_by_strike.values())
-
-        # Call wall = highest call GEX above spot
         call_strikes = {s: per_strike[s]["call_gex"] for s in per_strike if s > spot_price}
         call_wall = max(call_strikes, key=call_strikes.get) if call_strikes else None
-
-        # Put wall = largest put GEX magnitude below spot
         put_strikes = {s: abs(per_strike[s]["put_gex"]) for s in per_strike if s < spot_price}
         put_wall = max(put_strikes, key=put_strikes.get) if put_strikes else None
-
         gamma_flip = _find_gamma_flip(per_strike, spot_price)
-
-        levels = GexLevels(
+        return GexLevels(
             ticker=ticker,
             spot_price=spot_price,
             call_wall=call_wall,
@@ -161,11 +149,16 @@ async def compute_gex(ticker: str) -> Optional[GexLevels]:
             net_gex_regime="POSITIVE" if net_gex >= 0 else "NEGATIVE",
             per_strike=net_by_strike,
         )
-        flip_str = f"{gamma_flip:.2f}" if gamma_flip is not None else "None"
-        logger.debug(f"GEX {ticker}: call_wall={call_wall}, put_wall={put_wall}, "
-                     f"flip={flip_str}, net={net_gex:.0f}")
-        return levels
+    except Exception as e:
+        logger.error(f"GEX from chain failed for {ticker}: {e}")
+        return None
 
+
+async def compute_gex(ticker: str) -> Optional[GexLevels]:
+    """Fetch options chain and compute GEX levels. Returns None on error."""
+    try:
+        chain = await get_options_chain(ticker, contract_type="ALL", strike_count=60)
+        return compute_gex_from_chain(ticker, chain)
     except Exception as e:
         logger.error(f"GEX compute failed for {ticker}: {e}")
         return None
