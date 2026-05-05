@@ -7,7 +7,7 @@ No authentication — intended for LAN/VPN access only.
 
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, desc, func
+from sqlalchemy import select, desc, func, case
 from datetime import datetime, date, timedelta
 from typing import Optional
 import json
@@ -234,7 +234,7 @@ async def get_stats(
             select(
                 func.count(PaperTrade.id).label("total"),
                 func.sum(
-                    func.cast(PaperTrade.net_pnl_usd > 0, type_=float)
+                    case((PaperTrade.net_pnl_usd > 0, 1), else_=0)
                 ).label("wins"),
                 func.sum(PaperTrade.net_pnl_usd).label("total_pnl"),
                 func.avg(PaperTrade.net_pnl_usd).label("avg_pnl"),
@@ -250,9 +250,9 @@ async def get_stats(
         outcome_result = await db.execute(
             select(
                 func.count(SignalOutcome.id).label("total"),
-                func.sum(func.cast(SignalOutcome.correct_15m, type_=float)).label("correct_15m"),
-                func.sum(func.cast(SignalOutcome.correct_30m, type_=float)).label("correct_30m"),
-                func.sum(func.cast(SignalOutcome.correct_1h, type_=float)).label("correct_1h"),
+                func.sum(case((SignalOutcome.correct_15m, 1), else_=0)).label("correct_15m"),
+                func.sum(case((SignalOutcome.correct_30m, 1), else_=0)).label("correct_30m"),
+                func.sum(case((SignalOutcome.correct_1h, 1), else_=0)).label("correct_1h"),
             ).where(SignalOutcome.ticker == ticker)
         )
         orow = outcome_result.one()

@@ -89,6 +89,9 @@ _subscribed_option_symbols: set[str] = set()   # OCC symbols with active TIMESAL
 _premarket_done: bool = False
 _premarket_date: Optional[date] = None
 
+_last_status_log: dict[str, float] = {}   # ticker → last status log timestamp
+_STATUS_LOG_INTERVAL = 300                 # log gate reason per ticker every 5 min
+
 _pre_open_snapshot_done: bool = False   # 9:25 AM price snapshots taken
 _pre_open_evaluated: bool = False       # 9:29:30 opening play assessment run
 _opening_plays_fired: bool = False      # 9:30 AM queued plays executed
@@ -461,6 +464,16 @@ async def _eval_ticker(ticker: str) -> None:
     chain = await _refresh_chain_if_needed(ticker)
 
     signal = await evaluate_ticker(ticker, price, gex, paused=_bot_paused)
+
+    # Periodic status log so we can see what's gating without signal noise
+    if now_ts - _last_status_log.get(ticker, 0) >= _STATUS_LOG_INTERVAL:
+        logger.info(
+            f"  {ticker}: price={price:.2f} | "
+            f"gate={signal.gated_by or 'PASSED'} score={signal.conviction_score:.0f} "
+            f"rvol={f'{signal.rvol:.2f}' if signal.rvol is not None else 'n/a'} "
+            f"vix={f'{signal.vix_level:.1f}' if signal.vix_level is not None else 'n/a'}"
+        )
+        _last_status_log[ticker] = now_ts
 
     if signal.gate_passed and signal.direction and not _bot_paused:
         pos = await paper_trader.try_open(signal, chain, quote)

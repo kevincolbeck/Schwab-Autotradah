@@ -190,8 +190,8 @@ async def fetch_prev_day_levels(ticker: str) -> tuple[Optional[float], Optional[
     try:
         from backend.data.schwab_rest import get_daily_bars
         bars = await get_daily_bars(ticker, days=5)
-        if len(bars) >= 2:
-            prev = bars[-2]   # second-to-last bar = previous trading day
+        if len(bars) >= 1:
+            prev = bars[-1]   # last bar = previous trading day (called pre-market, no today bar)
             return float(prev["high"]), float(prev["low"]), float(prev["close"])
     except Exception as e:
         logger.warning(f"Key levels: prev day fetch failed for {ticker}: {e}")

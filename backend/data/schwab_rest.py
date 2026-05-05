@@ -101,14 +101,17 @@ async def get_price_history(
 
 async def get_daily_bars(symbol: str, days: int = 30) -> list[dict]:
     """Returns list of daily OHLCV dicts for IV rank computation."""
+    # Schwab API: periodType=day only supports frequencyType=minute.
+    # Daily bars require periodType=year with frequencyType=daily.
     data = await get_price_history(
         symbol,
-        period_type="day",
-        period=days,
+        period_type="year",
+        period=1,
         frequency_type="daily",
         frequency=1,
     )
-    return data.get("candles", [])
+    candles = data.get("candles", [])
+    return candles[-days:] if len(candles) > days else candles
 
 
 async def get_minute_bars(symbol: str, days: int = 10) -> list[dict]:
