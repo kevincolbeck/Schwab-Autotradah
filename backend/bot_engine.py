@@ -76,6 +76,7 @@ def is_bot_paused() -> bool:
 
 # ── Caches ────────────────────────────────────────────────────────────────────
 _gex_cache: dict[str, tuple[GexLevels, float]] = {}
+_prev_gex: dict[str, GexLevels] = {}   # GEX from prior refresh — used for breakout detection
 _GEX_REFRESH_SECONDS = 300
 
 _chain_cache: dict[str, tuple[dict, float]] = {}
@@ -330,12 +331,15 @@ async def run_premarket_prep() -> None:
 # ── GEX / chain refresh helpers ───────────────────────────────────────────────
 
 async def _refresh_gex_if_needed(ticker: str, now_ts: float) -> Optional[GexLevels]:
+    global _prev_gex
     import time as _time
     cached = _gex_cache.get(ticker)
     if cached and (_time.time() - cached[1]) < _GEX_REFRESH_SECONDS:
         return cached[0]
     gex = await compute_gex(ticker)
     if gex:
+        if cached:
+            _prev_gex[ticker] = cached[0]   # save before overwriting
         _gex_cache[ticker] = (gex, _time.time())
         await _persist_gex_snapshot(ticker, gex)
         # Sync into key levels
@@ -463,7 +467,7 @@ async def _eval_ticker(ticker: str) -> None:
     gex   = await _refresh_gex_if_needed(ticker, now_ts)
     chain = await _refresh_chain_if_needed(ticker)
 
-    signal = await evaluate_ticker(ticker, price, gex, paused=_bot_paused)
+    signal = await evaluate_ticker(ticker, price, gex, prev_gex=_prev_gex.get(ticker), paused=_bot_paused)
 
     # Periodic status log so we can see what's gating without signal noise
     if now_ts - _last_status_log.get(ticker, 0) >= _STATUS_LOG_INTERVAL:

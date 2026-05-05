@@ -28,6 +28,7 @@ from typing import Optional
 from backend.config import (
     ET, MIN_CONVICTION_SCORE, HIGH_CONVICTION_SCORE,
     MIN_CONFIRMATIONS, GEX_PROXIMITY_PCT, FOOTPRINT_DIVERGENCE_BARS,
+    BREAKOUT_RVOL_MIN, BREAKOUT_MIN_CONFIRMATIONS, GEX_BREAKOUT_WINDOW_PCT,
 )
 from backend.database import AsyncSessionLocal, SignalTick, SignalOutcome
 from backend.data.event_calendar import is_earnings_day, is_macro_event_today, is_fomc_window
@@ -100,7 +101,160 @@ class SignalResult:
     option_type: Optional[str] = None
 
 
-async def evaluate_ticker(ticker: str, price: float, gex_levels, paused: bool = False) -> SignalResult:
+def _detect_wall_breakout(prev_gex, price: float) -> tuple[bool, str]:
+    """
+    Returns (True, side) if price just crossed a GEX wall since the previous reading.
+    Only counts as fresh if within GEX_BREAKOUT_WINDOW_PCT past the wall — avoids
+    chasing a move that already ran far from the level.
+    """
+    if prev_gex is None:
+        return False, ""
+    if prev_gex.call_wall and prev_gex.spot_price < prev_gex.call_wall:
+        if price >= prev_gex.call_wall:
+            if (price - prev_gex.call_wall) / prev_gex.call_wall <= GEX_BREAKOUT_WINDOW_PCT:
+                return True, "CALL"
+    if prev_gex.put_wall and prev_gex.spot_price > prev_gex.put_wall:
+        if price <= prev_gex.put_wall:
+            if (prev_gex.put_wall - price) / prev_gex.put_wall <= GEX_BREAKOUT_WINDOW_PCT:
+                return True, "PUT"
+    return False, ""
+
+
+async def _score_breakout(
+    ticker: str, price: float, gex_levels, cross_side: str,
+    prev_gex, result: SignalResult, paused: bool,
+) -> SignalResult:
+    """
+    Breakout signal path. Same 4 microstructure signals as rejection,
+    but requires BREAKOUT_MIN_CONFIRMATIONS (3) and BREAKOUT_RVOL_MIN (2.0).
+    Skips the entry-window filter — valid any time the market is open.
+    """
+    direction = "LONG" if cross_side == "CALL" else "SHORT"
+    crossed_wall = prev_gex.call_wall if cross_side == "CALL" else prev_gex.put_wall
+
+    # Gate B1: higher RVOL bar
+    _, rvol = get_rvol_monitor(ticker).passes_gate()
+    result.rvol = rvol
+    if rvol is not None and rvol < BREAKOUT_RVOL_MIN:
+        result.gated_by = f"BREAKOUT_LOW_RVOL_{rvol:.2f}"
+        await _persist(result)
+        return result
+
+    confirmations = 0
+    score = 0.0
+    breakdown: dict = {"signal_type": "BREAKOUT"}
+
+    # Freshness score (0–30): tighter cross = stronger signal
+    distance_pct = abs(price - crossed_wall) / crossed_wall
+    freshness = max(0.0, 30.0 * (1 - distance_pct / GEX_BREAKOUT_WINDOW_PCT))
+    score += freshness
+    breakdown["wall_cross_freshness"] = round(freshness, 1)
+
+    # Footprint delta (0–25)
+    fp = get_footprint(ticker)
+    delta_1m = fp.get_delta_1m()
+    delta_5m = fp.get_delta_5m()
+    absorption, absorption_side = fp.get_absorption()
+    result.footprint_delta_1m = delta_1m
+    result.footprint_delta_5m = delta_5m
+    result.footprint_absorption = absorption
+    result.footprint_absorption_side = absorption_side
+
+    delta_aligned = (
+        (direction == "LONG"  and delta_5m > 0) or
+        (direction == "SHORT" and delta_5m < 0)
+    )
+    if delta_aligned:
+        fp_score = min(25, abs(delta_5m) / 500_000 * 25) if delta_5m else 15
+        score += fp_score
+        breakdown["footprint"] = round(fp_score, 1)
+        confirmations += 1
+    else:
+        breakdown["footprint"] = 0
+
+    # L2 imbalance (0–20)
+    ob = get_ob(ticker)
+    ob_state = ob.get_state()
+    result.l2_bid_wall_price = ob_state.bid_wall_price
+    result.l2_bid_wall_size  = ob_state.bid_wall_size
+    result.l2_ask_wall_price = ob_state.ask_wall_price
+    result.l2_ask_wall_size  = ob_state.ask_wall_size
+    result.l2_imbalance      = ob_state.imbalance
+
+    if ob_state.imbalance_direction() == direction:
+        l2_score = min(20, abs(ob_state.imbalance) * 20)
+        score += l2_score
+        breakdown["l2_imbalance"] = round(l2_score, 1)
+        confirmations += 1
+    else:
+        breakdown["l2_imbalance"] = 0
+
+    # Large print (0–15)
+    flow = options_flow_monitor.get_state(ticker)
+    result.large_print_detected = flow.large_print_detected
+    result.large_print_side     = flow.large_print_direction
+    result.large_print_notional = flow.last_large_print.notional if flow.last_large_print else None
+
+    if flow.is_large_print_fresh() and flow.large_print_direction == direction:
+        score += 15
+        breakdown["large_print"] = 15
+        confirmations += 1
+    else:
+        breakdown["large_print"] = 0
+
+    # Options sweep (0–10)
+    result.options_sweep_detected      = flow.sweep_detected
+    result.options_sweep_side          = flow.sweep_direction
+    result.options_sweep_strike        = flow.last_sweep.strike if flow.last_sweep else None
+    result.options_sweep_vol_oi_ratio  = flow.last_sweep.vol_oi_ratio if flow.last_sweep else None
+
+    if flow.is_sweep_fresh() and flow.sweep_direction == direction:
+        score += 10
+        breakdown["options_sweep"] = 10
+        confirmations += 1
+    else:
+        breakdown["options_sweep"] = 0
+
+    # VWAP context
+    vwap_calc = get_vwap_calc(ticker)
+    result.vwap = vwap_calc.get_vwap()
+    result.dist_from_vwap_pct = vwap_calc.dist_from_vwap_pct(price)
+
+    result.conviction_score = round(score, 1)
+    result.score_breakdown  = breakdown
+
+    if confirmations < BREAKOUT_MIN_CONFIRMATIONS:
+        result.gated_by = f"BREAKOUT_INSUF_CONF_{confirmations}/{BREAKOUT_MIN_CONFIRMATIONS}"
+        await _persist(result)
+        return result
+
+    if score < MIN_CONVICTION_SCORE:
+        result.gated_by = f"BREAKOUT_LOW_CONVICTION_{score:.0f}"
+        await _persist(result)
+        return result
+
+    if paused:
+        result.gated_by = "BOT_PAUSED"
+        await _persist(result)
+        return result
+
+    if should_skip_afternoon_entry():
+        result.gated_by = "TOO_CLOSE_TO_EOD"
+        await _persist(result)
+        return result
+
+    result.gate_passed = True
+    result.direction   = direction
+    logger.info(
+        f"BREAKOUT {ticker} {direction} @ {price:.2f} | "
+        f"{'call' if cross_side == 'CALL' else 'put'}_wall={crossed_wall:.2f} "
+        f"score={score:.0f} conf={confirmations} rvol={rvol:.2f}"
+    )
+    await _persist(result)
+    return result
+
+
+async def evaluate_ticker(ticker: str, price: float, gex_levels, prev_gex=None, paused: bool = False) -> SignalResult:
     """
     Run the full gate + scoring logic for one ticker at the current moment.
     gex_levels: GexLevels object (may be None if GEX unavailable).
@@ -171,6 +325,12 @@ async def evaluate_ticker(ticker: str, price: float, gex_levels, paused: bool = 
     result.gex_wall_side = wall_side
 
     if not approaching:
+        # Check for wall breakout before giving up
+        crossed, cross_side = _detect_wall_breakout(prev_gex, price)
+        if crossed:
+            return await _score_breakout(
+                ticker, price, gex_levels, cross_side, prev_gex, result, paused
+            )
         result.gated_by = f"NOT_NEAR_GEX_WALL_{proximity_pct:.3%}"
         await _persist(result)
         return result

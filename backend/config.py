@@ -65,6 +65,11 @@ HARD_CLOSE_TIME        = (15, 58)   # force-close ALL positions at this time
 
 GEX_PROXIMITY_PCT      = 0.003      # price within 0.3% of a GEX wall → approaching
 MIN_CONVICTION_SCORE   = 55         # minimum score to emit a signal
+
+# Breakout signal — price punching through a GEX wall on volume
+BREAKOUT_RVOL_MIN          = 2.0    # higher RVOL bar than rejection (1.3)
+BREAKOUT_MIN_CONFIRMATIONS = 3      # 3 of 4 microstructure signals required (vs 2)
+GEX_BREAKOUT_WINDOW_PCT    = 0.005  # only count as fresh breakout within 0.5% past wall
 HIGH_CONVICTION_SCORE  = 75         # score at which position size gets a boost
 MIN_CONFIRMATIONS      = 2          # out of 4 confirmation signals required
 
