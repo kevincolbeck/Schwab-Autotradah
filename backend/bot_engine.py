@@ -102,6 +102,15 @@ async def startup() -> None:
     logger.info("Bot engine starting up...")
     await init_db()
     await paper_trader.sync_state()
+
+    # If restarting after 3:58 PM with stale open positions from today, close them now.
+    if is_hard_close_time() and paper_trader.positions:
+        logger.warning(
+            f"Startup: {len(paper_trader.positions)} stale position(s) found after 3:58 PM — force-closing"
+        )
+        for pos in list(paper_trader.positions.values()):
+            await paper_trader._close_position(pos, pos.entry_price * 0.5, "EOD_FORCE_RESTART", {})
+
     await refresh_earnings_cache()
 
     or_tracker = get_opening_range_tracker()
@@ -639,21 +648,22 @@ async def _eval_loop() -> None:
             continue
         # ─────────────────────────────────────────────────────────────────────
 
-        if not is_market_open():
-            await asyncio.sleep(15)
-            continue
-
-        if not _bot_running:
-            await asyncio.sleep(5)
-            continue
-
-        # Hard close at 3:58 ET — close positions once, reset day once
+        # Hard close at 3:58 ET — MUST be before is_market_open() check so that
+        # a restart after 4:00 PM still force-closes stale positions from the day.
         if is_hard_close_time():
             await _hard_close_all()
             if not _eod_reset_done:
                 await paper_trader.reset_day()
                 _eod_reset_done = True
             await asyncio.sleep(120)
+            continue
+
+        if not is_market_open():
+            await asyncio.sleep(15)
+            continue
+
+        if not _bot_running:
+            await asyncio.sleep(5)
             continue
 
         import time as _time

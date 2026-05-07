@@ -201,14 +201,16 @@ class FootprintBuilder:
 
     # ── Public accessors ──────────────────────────────────────────────────────
 
-    def get_delta_1m(self) -> float:
-        """Delta of the most recently closed 1-minute candle."""
+    def get_delta_1m(self) -> Optional[float]:
+        """Delta of the most recently closed 1-minute candle. None if no candles closed yet."""
         if not self._closed:
-            return 0.0
+            return None
         return self._closed[-1].delta
 
-    def get_delta_5m(self) -> float:
-        """Sum of delta over the last 5 closed candles."""
+    def get_delta_5m(self) -> Optional[float]:
+        """Sum of delta over the last 5 closed candles. None if no candles closed yet."""
+        if not self._closed:
+            return None
         recent = self._closed[-5:] if len(self._closed) >= 5 else self._closed
         return sum(c.delta for c in recent)
 

@@ -88,7 +88,7 @@ async def get_iv_rank(ticker: str) -> Optional[float]:
         )
         rows = result.scalars().all()
 
-    if len(rows) < 5:
+    if len(rows) < 3:
         logger.debug(f"IV rank: insufficient history for {ticker} ({len(rows)} days)")
         return None
 

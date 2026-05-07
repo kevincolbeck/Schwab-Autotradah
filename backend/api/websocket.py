@@ -176,6 +176,7 @@ async def _build_payload() -> dict:
             "footprint_absorption_side": abs_side,
             # L2
             "l2_imbalance": ob.imbalance,
+            "l2_imbalance_direction": ob.imbalance_direction(),
             "l2_bid_wall_price": ob.bid_wall_price,
             "l2_bid_wall_size": ob.bid_wall_size,
             "l2_ask_wall_price": ob.ask_wall_price,

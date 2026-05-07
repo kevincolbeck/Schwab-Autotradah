@@ -57,6 +57,11 @@ class SchwabStreamClient:
         self._request_id = 0
         self._running = False
 
+        # Persisted across reconnects — re-subscribed on each new connection
+        self._customer_id: str = ""
+        self._correl_id: str = ""
+        self._option_sub_symbols: set[str] = set()
+
         # Published state — read by strategy modules
         self.quotes: dict[str, dict] = defaultdict(dict)
         self.option_quotes: dict[str, dict] = defaultdict(dict)
@@ -192,6 +197,10 @@ class SchwabStreamClient:
         logger.info("Schwab stream login successful")
 
     async def _subscribe_all(self, ws, customer_id: str, correl_id: str) -> None:
+        # Store so subscribe_options() can use them without args on reconnect
+        self._customer_id = customer_id
+        self._correl_id   = correl_id
+
         ticker_str = ",".join(ALL_TICKERS)
         # Include $VIX so vix_monitor receives live VIX updates for regime classification
         l1_keys    = ticker_str + ",$VIX"
@@ -223,11 +232,26 @@ class SchwabStreamClient:
 
         logger.info(f"Subscribed to streams for: {ticker_str}")
 
+        # Re-subscribe any option contracts from before this connection (survives restarts)
+        if self._option_sub_symbols:
+            sym_str = ",".join(self._option_sub_symbols)
+            l1_sub = self._make_request("LEVELONE_OPTIONS", "ADD",
+                {"keys": sym_str, "fields": ",".join(str(k) for k in L1_OPTIONS_FIELDS)},
+                customer_id, correl_id)
+            ts_sub = self._make_request("TIMESALE_OPTIONS", "ADD",
+                {"keys": sym_str, "fields": "0,1,2,3"},
+                customer_id, correl_id)
+            await ws.send(json.dumps(l1_sub))
+            await asyncio.sleep(0.05)
+            await ws.send(json.dumps(ts_sub))
+            logger.info(f"Reconnect: re-subscribed {len(self._option_sub_symbols)} option contracts")
+
     async def subscribe_options(self, option_symbols: list[str],
                                 customer_id: str, correl_id: str) -> None:
         """Dynamically subscribe to specific option contracts (called when a signal fires)."""
         if not option_symbols or not self._ws:
             return
+        self._option_sub_symbols.update(option_symbols)   # persist for reconnect
         sym_str = ",".join(option_symbols)
         l1_sub = self._make_request("LEVELONE_OPTIONS", "ADD",
             {"keys": sym_str, "fields": ",".join(str(k) for k in L1_OPTIONS_FIELDS)},

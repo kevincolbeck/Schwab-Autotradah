@@ -23,6 +23,7 @@ export interface TickerState {
   footprint_absorption_side: string | null  // "BULLISH" | "BEARISH"
   // L2
   l2_imbalance: number | null
+  l2_imbalance_direction: string | null  // "LONG" | "SHORT" | null
   l2_bid_wall_price: number | null
   l2_bid_wall_size: number | null
   l2_ask_wall_price: number | null

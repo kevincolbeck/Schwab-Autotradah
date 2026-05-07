@@ -25,7 +25,7 @@ function ImbalanceCell({ v, dir }: { v: number | null; dir: string | null }) {
 
 function FlowCell({ detected, dir }: { detected: boolean; dir: string | null }) {
   if (!detected || !dir) return <Dim>—</Dim>
-  const color = dir === 'CALL' ? 'text-green-400' : 'text-red-400'
+  const color = dir === 'LONG' ? 'text-green-400' : 'text-red-400'
   return <span className={`${color} text-[10px] font-semibold`}>{dir}</span>
 }
 
@@ -162,7 +162,7 @@ export default function SignalGrid({ tickers }: Props) {
                     </span>
                   ) : <Dim>—</Dim>}
                 </Td>
-                <Td><ImbalanceCell v={s.l2_imbalance} dir={null} /></Td>
+                <Td><ImbalanceCell v={s.l2_imbalance} dir={s.l2_imbalance_direction} /></Td>
                 <Td><FlowCell detected={s.sweep_detected} dir={s.sweep_direction} /></Td>
                 <Td><FlowCell detected={s.large_print_detected} dir={s.large_print_direction} /></Td>
                 <Td>

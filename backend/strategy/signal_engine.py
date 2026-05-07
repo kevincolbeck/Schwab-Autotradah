@@ -160,7 +160,7 @@ async def _score_breakout(
     result.footprint_absorption = absorption
     result.footprint_absorption_side = absorption_side
 
-    delta_aligned = (
+    delta_aligned = delta_5m is not None and (
         (direction == "LONG"  and delta_5m > 0) or
         (direction == "SHORT" and delta_5m < 0)
     )
@@ -368,7 +368,7 @@ async def evaluate_ticker(ticker: str, price: float, gex_levels, prev_gex=None, 
     result.footprint_absorption = absorption
     result.footprint_absorption_side = absorption_side
 
-    delta_aligned = (
+    delta_aligned = delta_5m is not None and (
         (candidate_direction == "LONG"  and delta_5m > 0) or
         (candidate_direction == "SHORT" and delta_5m < 0)
     )
@@ -379,8 +379,7 @@ async def evaluate_ticker(ticker: str, price: float, gex_levels, prev_gex=None, 
         )
     )
     if delta_aligned or absorption_aligned:
-        fp_score_raw = abs(delta_5m)
-        # Normalise: assume 1M shares = max delta for the period, cap at 25
+        fp_score_raw = abs(delta_5m) if delta_5m is not None else 0
         fp_score = min(25, fp_score_raw / 500_000 * 25) if fp_score_raw > 0 else 10
         if absorption_aligned:
             fp_score = min(25, fp_score + 5)
