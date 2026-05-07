@@ -163,6 +163,11 @@ class PaperTrader:
             logger.info(f"Paper trade blocked for {signal.ticker}: {reason}")
             return None
 
+        # Don't open a second position on the same ticker
+        if any(p.ticker == signal.ticker for p in self._positions.values()):
+            logger.info(f"Paper trade blocked for {signal.ticker}: position already open")
+            return None
+
         # Select the option contract
         option = _select_option(signal.ticker, signal.direction, chain_data)
         if not option:
@@ -344,6 +349,7 @@ class PaperTrader:
 
                 if _should_key_level_exit(pos, ticker_micro):
                     await self._close_position(pos, mid, "KEY_LEVEL_EXIT", quote)
+                    continue
 
             elif not pos.tp2_hit:
                 # ── Phase 2: breakeven stop ──────────────────────────────────

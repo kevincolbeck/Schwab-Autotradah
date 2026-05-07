@@ -737,10 +737,11 @@ async def _hard_close_all() -> None:
     for pos in list(paper_trader.positions.values()):
         quote = dict(stream_client.option_quotes.get(pos.option_symbol, {}))
         if not quote:
-            quote = {"bid": pos.entry_price * 0.70}
+            # Fallback: use current stop level (BE or trailing) — not original -30%
+            quote = {"bid": pos.stop_price}
         await paper_trader._close_position(
             pos,
-            float(quote.get("bid", pos.entry_price * 0.70)),
+            float(quote.get("bid", pos.stop_price) or pos.stop_price),
             "EOD_FORCE",
             quote,
         )

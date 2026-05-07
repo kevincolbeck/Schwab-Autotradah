@@ -111,7 +111,7 @@ class OptionsFlowMonitor:
     def on_option_tick(self, symbol: str, price: float, size: int, ts: float) -> None:
         """Called for every option trade tick from the stream."""
         underlying, strike, opt_type = _parse_option_symbol(symbol)
-        if not underlying or underlying not in {t for t in self._flow_state}:
+        if not underlying or underlying not in self._flow_state:
             # Only track our tickers
             return
 
