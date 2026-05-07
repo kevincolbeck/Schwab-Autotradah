@@ -70,7 +70,9 @@ export interface OpenPosition {
   option_type: string
   option_expiry: string
   entry_price: number
+  entry_ts: string
   contracts: number
+  contracts_remaining: number
   premium_paid: number
   stop_price: number
   target_2r: number
@@ -78,6 +80,13 @@ export interface OpenPosition {
   current_mid: number | null
   unrealized_pnl: number | null
   unrealized_pct: number | null
+  realized_partials_usd: number
+  tp1_hit: boolean
+  tp2_hit: boolean
+  tp_stage: 'ENTRY' | 'TP1' | 'TP2'
+  stop_at_breakeven: boolean
+  peak_unrealized_pct: number
+  trailing_stop_price: number | null
 }
 
 export interface PnlPoint {

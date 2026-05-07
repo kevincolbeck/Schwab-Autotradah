@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     # Paper trading risk params
     paper_account_size: float = 100_000.0
     risk_per_trade_pct: float = 0.0025        # 0.25% of account
-    option_stop_loss_pct: float = 0.30        # -30% on premium
+    option_stop_loss_pct: float = 0.30        # -30% on premium (initial hard stop)
     target_rr: float = 2.5                    # 2.5R default
 
     # Server
@@ -93,7 +93,17 @@ VIX_HIGH               = 30
 # Footprint divergence: consecutive bars where delta disagrees with price
 FOOTPRINT_DIVERGENCE_BARS = 2
 
-# Portfolio risk limits
+# ── Partial TP ladder ────────────────────────────────────────────────────────
+
+TP1_PNL_PCT           = 0.30   # +30% unrealized triggers TP1
+TP1_SELL_FRACTION     = 0.10   # sell 10% of original contracts at TP1
+TP2_PNL_PCT           = 0.50   # +50% unrealized triggers TP2
+TP2_TOTAL_SOLD_FRAC   = 0.75   # 75% of original contracts sold by end of TP2
+TRAILING_STOP_FACTOR  = 0.50   # trailing stop = peak_pct × 50% (e.g. up 100% → stop at 50%)
+OPPOSING_EXIT_COUNT   = 2      # opposing signals needed to exit remaining after TP2
+
+# ── Portfolio risk limits ─────────────────────────────────────────────────────
+
 MAX_OPEN_POSITIONS     = 3
 MAX_TOTAL_PREMIUM_PCT  = 0.010      # 1.0% of account in open premium at once
 DAILY_CIRCUIT_BREAKER_PCT = 0.020  # pause if paper account down 2% on the day

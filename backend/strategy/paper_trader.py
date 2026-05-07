@@ -29,6 +29,9 @@ from backend.config import (
     ET, ALL_TICKERS, ETFS, MAG7,
     SLIPPAGE, COMMISSION_PER_CONTRACT,
     MAX_OPEN_POSITIONS, MAX_TOTAL_PREMIUM_PCT, DAILY_CIRCUIT_BREAKER_PCT,
+    L2_IMBALANCE_THRESHOLD,
+    TP1_PNL_PCT, TP1_SELL_FRACTION, TP2_PNL_PCT, TP2_TOTAL_SOLD_FRAC,
+    TRAILING_STOP_FACTOR, OPPOSING_EXIT_COUNT,
 )
 from backend.database import AsyncSessionLocal, PaperTrade, BotState, SignalTick
 from backend.strategy.time_filter import is_hard_close_time
@@ -48,9 +51,9 @@ class OpenPosition:
     option_expiry: str
     option_type: str
     entry_price: float          # per-share premium paid
-    contracts: int
+    contracts: int              # original contract count (never changes)
     premium_paid: float
-    stop_price: float           # premium level for stop loss
+    stop_price: float           # current stop level (moves to BE after TP1, trails after TP2)
     target_2r_price: float
     target_3r_price: float
     entry_underlying: float
@@ -60,6 +63,14 @@ class OpenPosition:
     vix_at_entry: float = 0.0
     iv_rank_at_entry: float = 0.0
     time_window: str = ""
+    # Partial exit tracking
+    original_contracts: int = 0
+    contracts_remaining: int = 0
+    tp1_hit: bool = False
+    tp2_hit: bool = False
+    stop_at_breakeven: bool = False
+    peak_unrealized_pct: float = 0.0     # highest (mid/entry - 1)*100 seen
+    realized_partials_usd: float = 0.0   # cumulative $ booked via partial closes
 
 
 class PaperTrader:
@@ -107,6 +118,12 @@ class PaperTrader:
                     vix_at_entry=trade.vix_at_entry or 0,
                     iv_rank_at_entry=trade.iv_rank_at_entry or 0,
                     time_window=trade.time_window or "",
+                    original_contracts=trade.original_contracts or trade.contracts,
+                    contracts_remaining=trade.contracts_remaining or trade.contracts,
+                    tp1_hit=bool(trade.tp1_hit),
+                    tp2_hit=bool(trade.tp2_hit),
+                    stop_at_breakeven=bool(trade.stop_at_breakeven),
+                    realized_partials_usd=trade.realized_partials_usd or 0.0,
                 )
                 self._positions[trade.id] = pos
 
@@ -174,9 +191,9 @@ class PaperTrader:
         premium_paid = fill_price * contracts * 100
         commission = contracts * COMMISSION_PER_CONTRACT
 
-        stop_price    = fill_price * (1 - settings.option_stop_loss_pct)
-        target_2r     = fill_price * (1 + settings.option_stop_loss_pct * 2)
-        target_3r     = fill_price * (1 + settings.option_stop_loss_pct * 3)
+        stop_price = fill_price * (1 - settings.option_stop_loss_pct)   # hard -30% initial
+        target_2r  = fill_price * (1 + settings.option_stop_loss_pct * 2)
+        target_3r  = fill_price * (1 + settings.option_stop_loss_pct * 3)
 
         entry_ts = datetime.now(ET)
 
@@ -207,6 +224,12 @@ class PaperTrader:
                 vix_at_entry=signal.vix_level or 0,
                 iv_rank_at_entry=signal.iv_rank or 0,
                 time_window=signal.time_window,
+                original_contracts=contracts,
+                contracts_remaining=contracts,
+                realized_partials_usd=0.0,
+                tp1_hit=False,
+                tp2_hit=False,
+                stop_at_breakeven=False,
             )
             session.add(trade)
             await session.flush()
@@ -246,6 +269,8 @@ class PaperTrader:
             vix_at_entry=signal.vix_level or 0,
             iv_rank_at_entry=signal.iv_rank or 0,
             time_window=signal.time_window,
+            original_contracts=contracts,
+            contracts_remaining=contracts,
         )
         self._positions[trade_id] = pos
 
@@ -261,70 +286,173 @@ class PaperTrader:
 
     async def check_positions(self, option_quotes: dict, micro: dict = None) -> None:
         """
-        Called every 5s. Checks SL/TP, EOD force-close, and key-level early exit.
+        Called every 1s. Implements TP ladder:
+          Phase 1 (pre-TP1): hard -30% stop, exit at +30% to sell 10% + move stop to BE
+          Phase 2 (post-TP1, pre-TP2): breakeven stop, exit at +50% to sell to 75% total sold
+          Phase 3 (post-TP2): trailing stop at peak × 50%, exit on 2+ opposing signals
 
         option_quotes: dict[option_symbol → {bid, ask, delta, iv, ...}]
-        micro: dict[ticker → {price, footprint_delta_1m, l2_imbalance, key_levels}]
+        micro: dict[ticker → {price, footprint_*, l2_*, sweep_*, key_levels}]
         """
         force_close = is_hard_close_time()
         for trade_id in list(self._positions.keys()):
-            pos = self._positions[trade_id]
+            pos = self._positions.get(trade_id)
+            if pos is None:
+                continue
+
             quote = option_quotes.get(pos.option_symbol, {})
-            current_bid = float(quote.get("bid", 0) or 0)
-            current_ask = float(quote.get("ask", 0) or 0)
-            mid = (current_bid + current_ask) / 2 if current_bid and current_ask else 0
+            bid = float(quote.get("bid", 0) or 0)
+            ask = float(quote.get("ask", 0) or 0)
+            mid = (bid + ask) / 2 if bid and ask else 0
 
             if mid <= 0:
                 if force_close:
-                    await self._close_position(pos, pos.entry_price * 0.5,
-                                               "EOD_FORCE", quote)
+                    await self._close_position(pos, pos.entry_price * 0.5, "EOD_FORCE", quote)
                 continue
 
-            reason = None
+            # Track peak unrealized
+            unrealized_pct = (mid / pos.entry_price - 1) * 100
+            if unrealized_pct > pos.peak_unrealized_pct:
+                pos.peak_unrealized_pct = unrealized_pct
+
+            # EOD: always exit all remaining
             if force_close:
-                reason = "EOD_FORCE"
-            elif mid <= pos.stop_price:
-                reason = "STOP_LOSS"
-            elif mid >= pos.target_3r_price:
-                reason = "TARGET_3R"
-            elif mid >= pos.target_2r_price:
-                reason = "TARGET_2R"
+                await self._close_position(pos, mid, "EOD_FORCE", quote)
+                continue
+
+            ticker_micro = (micro or {}).get(pos.ticker, {})
+
+            if not pos.tp1_hit:
+                # ── Phase 1: hard -30% stop ──────────────────────────────────
+                if mid <= pos.stop_price:
+                    await self._close_position(pos, mid, "STOP_LOSS", quote)
+                    continue
+
+                if unrealized_pct >= TP1_PNL_PCT * 100:
+                    # Sell TP1 tranche — 10% of original, min 1, keep at least 1 remaining
+                    to_sell = max(1, round(pos.original_contracts * TP1_SELL_FRACTION))
+                    to_sell = min(to_sell, pos.contracts_remaining - 1)
+                    bid_fill = max(0.01, float(quote.get("bid", mid) or mid))
+                    pos.tp1_hit = True
+                    pos.stop_at_breakeven = True
+                    pos.stop_price = pos.entry_price  # move stop to breakeven
+                    if to_sell > 0:
+                        await self._partial_close(pos, to_sell, bid_fill, quote, "TP1")
+                    else:
+                        await self._close_position(pos, mid, "TP1_FULL", quote)
+                    continue
+
+                if _should_key_level_exit(pos, ticker_micro):
+                    await self._close_position(pos, mid, "KEY_LEVEL_EXIT", quote)
+
+            elif not pos.tp2_hit:
+                # ── Phase 2: breakeven stop ──────────────────────────────────
+                if mid <= pos.stop_price:
+                    await self._close_position(pos, mid, "STOP_LOSS_BE", quote)
+                    continue
+
+                if unrealized_pct >= TP2_PNL_PCT * 100:
+                    # Sell enough to reach 75% total sold
+                    sold_so_far = pos.original_contracts - pos.contracts_remaining
+                    target_sold = round(pos.original_contracts * TP2_TOTAL_SOLD_FRAC)
+                    to_sell = max(0, target_sold - sold_so_far)
+                    to_sell = min(to_sell, pos.contracts_remaining - 1)
+                    bid_fill = max(0.01, float(quote.get("bid", mid) or mid))
+                    pos.tp2_hit = True
+                    if to_sell > 0:
+                        await self._partial_close(pos, to_sell, bid_fill, quote, "TP2")
+                    else:
+                        # Nothing to sell but mark TP2 hit; persist it
+                        async with AsyncSessionLocal() as sess:
+                            await sess.execute(
+                                update(PaperTrade)
+                                .where(PaperTrade.id == pos.trade_id)
+                                .values(tp2_hit=True)
+                            )
+                            await sess.commit()
+                    continue
+
+                if _count_opposing_signals(pos, ticker_micro) >= OPPOSING_EXIT_COUNT:
+                    await self._close_position(pos, mid, "OPPOSING_SIGNALS", quote)
+
             else:
-                # Key-level early exit: approaching opposing structural level
-                # with confirming microstructure → get out before reversal
-                if micro:
-                    ticker_micro = micro.get(pos.ticker, {})
-                    spot   = ticker_micro.get("price", 0)
-                    delta  = ticker_micro.get("footprint_delta_1m")
-                    imbal  = ticker_micro.get("l2_imbalance")
-                    levels = ticker_micro.get("key_levels")
+                # ── Phase 3: trailing stop on remaining ──────────────────────
+                trailing_price = pos.entry_price * (
+                    1 + pos.peak_unrealized_pct * TRAILING_STOP_FACTOR / 100
+                )
+                pos.stop_price = trailing_price  # update in-memory for dashboard display
 
-                    if spot and levels:
-                        if pos.direction == "LONG":
-                            exit_now, exit_reason = levels.should_exit_long(spot, delta, imbal)
-                        else:
-                            exit_now, exit_reason = levels.should_exit_short(spot, delta, imbal)
+                if mid <= trailing_price:
+                    await self._close_position(pos, mid, "TRAILING_STOP", quote)
+                elif _count_opposing_signals(pos, ticker_micro) >= OPPOSING_EXIT_COUNT:
+                    await self._close_position(pos, mid, "OPPOSING_SIGNALS", quote)
 
-                        if exit_now:
-                            reason = f"KEY_LEVEL_EXIT"
-                            logger.info(f"Key-level early exit {pos.ticker}: {exit_reason}")
-
-            if reason:
-                await self._close_position(pos, mid, reason, quote)
-
-    async def _close_position(self, pos: OpenPosition, current_mid: float,
-                              reason: str, quote: dict) -> None:
+    async def _partial_close(
+        self, pos: OpenPosition, contracts_to_sell: int,
+        fill_price: float, quote: dict, reason: str
+    ) -> None:
+        """Sell a subset of contracts. Updates in-memory state and DB; credits account."""
         ticker = pos.ticker
         slippage = SLIPPAGE.get(ticker, SLIPPAGE["DEFAULT"])
 
-        # Sell at bid. Slippage tracked separately as a transaction cost.
+        gross = (fill_price - pos.entry_price) * contracts_to_sell * 100
+        slip  = slippage * contracts_to_sell * 100 * 2  # proportional round-trip share
+        comm  = contracts_to_sell * COMMISSION_PER_CONTRACT * 2
+        net   = gross - slip - comm
+
+        pos.contracts_remaining  -= contracts_to_sell
+        pos.realized_partials_usd += net
+
+        update_vals: dict = dict(
+            contracts_remaining=pos.contracts_remaining,
+            realized_partials_usd=pos.realized_partials_usd,
+            tp1_hit=pos.tp1_hit,
+            tp2_hit=pos.tp2_hit,
+            stop_price=pos.stop_price,
+            stop_at_breakeven=pos.stop_at_breakeven,
+        )
+        if reason == "TP1":
+            update_vals["tp1_contracts_sold"] = contracts_to_sell
+            update_vals["tp1_price"] = fill_price
+        elif reason == "TP2":
+            update_vals["tp2_contracts_sold"] = contracts_to_sell
+            update_vals["tp2_price"] = fill_price
+
+        async with AsyncSessionLocal() as session:
+            await session.execute(
+                update(PaperTrade).where(PaperTrade.id == pos.trade_id).values(**update_vals)
+            )
+            result = await session.execute(select(BotState).where(BotState.id == 1))
+            state = result.scalar_one_or_none()
+            if state:
+                state.paper_account_balance += net
+                self._account_balance = state.paper_account_balance
+            await session.commit()
+
+        logger.info(
+            f"PARTIAL [{reason}]: {pos.ticker} {pos.direction} "
+            f"sold {contracts_to_sell}x @ ${fill_price:.2f} | net=${net:+.0f} "
+            f"| remaining={pos.contracts_remaining}/{pos.original_contracts} "
+            f"| stop now=${pos.stop_price:.2f}"
+        )
+
+    async def _close_position(self, pos: OpenPosition, current_mid: float,
+                              reason: str, quote: dict) -> None:
+        """Close all remaining contracts. Total trade P&L = partials + this leg."""
+        ticker = pos.ticker
+        slippage = SLIPPAGE.get(ticker, SLIPPAGE["DEFAULT"])
+
         bid = float(quote.get("bid", current_mid) or current_mid)
         fill_price = max(0.01, bid)
+        contracts = pos.contracts_remaining if pos.contracts_remaining > 0 else pos.contracts
 
-        gross_pnl = (fill_price - pos.entry_price) * pos.contracts * 100
-        slippage_cost = slippage * pos.contracts * 100 * 2   # entry + exit round-trip
-        commission_cost = pos.contracts * COMMISSION_PER_CONTRACT * 2
-        net_pnl = gross_pnl - slippage_cost - commission_cost
+        gross_pnl    = (fill_price - pos.entry_price) * contracts * 100
+        slippage_cost = slippage * contracts * 100 * 2
+        commission_cost = contracts * COMMISSION_PER_CONTRACT * 2
+        net_pnl_leg  = gross_pnl - slippage_cost - commission_cost
+
+        # Total trade P&L across all partial closes + this final leg
+        total_net_pnl = pos.realized_partials_usd + net_pnl_leg
 
         exit_ts = datetime.now(ET)
 
@@ -335,29 +463,27 @@ class PaperTrader:
                 .values(
                     status="CLOSED",
                     exit_ts=exit_ts,
-                    exit_underlying_price=None,   # updated from quote if available
                     option_exit_price=fill_price,
                     exit_reason=reason,
+                    contracts_remaining=0,
                     delta_at_exit=quote.get("delta"),
                     iv_at_exit=quote.get("implied_volatility"),
                     gross_pnl_usd=gross_pnl,
                     slippage_usd=slippage_cost,
                     commission_usd=commission_cost,
-                    net_pnl_usd=net_pnl,
+                    net_pnl_usd=total_net_pnl,
                 )
             )
-            # Update bot state
             result = await session.execute(select(BotState).where(BotState.id == 1))
             state = result.scalar_one_or_none()
             if state:
-                state.paper_account_balance += net_pnl
+                state.paper_account_balance += net_pnl_leg  # partials already credited
                 state.total_trades += 1
-                if net_pnl > 0:
+                if total_net_pnl > 0:
                     state.winning_trades += 1
-                state.total_net_pnl_usd += net_pnl
+                state.total_net_pnl_usd += total_net_pnl
                 self._account_balance = state.paper_account_balance
 
-                # Check circuit breaker
                 day_loss = (state.paper_day_start_balance - state.paper_account_balance)
                 day_loss_pct = day_loss / state.paper_day_start_balance
                 if day_loss_pct >= DAILY_CIRCUIT_BREAKER_PCT:
@@ -372,11 +498,12 @@ class PaperTrader:
             await session.commit()
 
         del self._positions[pos.trade_id]
-        pct = net_pnl / pos.premium_paid * 100 if pos.premium_paid else 0
+        pct = total_net_pnl / pos.premium_paid * 100 if pos.premium_paid else 0
         logger.info(
             f"PAPER TRADE CLOSED: {pos.ticker} {pos.direction} [{reason}] "
             f"| entry=${pos.entry_price:.2f} exit=${fill_price:.2f} "
-            f"| net_pnl=${net_pnl:+.0f} ({pct:+.1f}%)"
+            f"| partials=${pos.realized_partials_usd:+.0f} final=${net_pnl_leg:+.0f} "
+            f"total=${total_net_pnl:+.0f} ({pct:+.1f}%)"
         )
 
     async def reset_day(self) -> None:
@@ -407,6 +534,55 @@ class PaperTrader:
     @property
     def circuit_breaker_active(self) -> bool:
         return self._circuit_breaker
+
+
+# ── Opposing-signal helpers ───────────────────────────────────────────────────
+
+def _should_key_level_exit(pos: OpenPosition, ticker_micro: dict) -> bool:
+    spot   = ticker_micro.get("price", 0)
+    delta  = ticker_micro.get("footprint_delta_1m")
+    imbal  = ticker_micro.get("l2_imbalance")
+    levels = ticker_micro.get("key_levels")
+    if not (spot and levels):
+        return False
+    if pos.direction == "LONG":
+        exit_now, _ = levels.should_exit_long(spot, delta, imbal)
+    else:
+        exit_now, _ = levels.should_exit_short(spot, delta, imbal)
+    return exit_now
+
+
+def _count_opposing_signals(pos: OpenPosition, ticker_micro: dict) -> int:
+    """Count how many microstructure signals oppose the current position direction."""
+    count = 0
+    direction = pos.direction
+
+    # 1. Footprint absorption against direction
+    if ticker_micro.get("footprint_absorption"):
+        abs_side = ticker_micro.get("footprint_absorption_side")
+        if direction == "LONG" and abs_side == "BEARISH":
+            count += 1
+        elif direction == "SHORT" and abs_side == "BULLISH":
+            count += 1
+
+    # 2. L2 imbalance heavily against direction
+    l2_dir   = ticker_micro.get("l2_imbalance_direction")
+    l2_imbal = abs(ticker_micro.get("l2_imbalance") or 0)
+    if l2_imbal >= L2_IMBALANCE_THRESHOLD:
+        if direction == "LONG" and l2_dir == "SHORT":
+            count += 1
+        elif direction == "SHORT" and l2_dir == "LONG":
+            count += 1
+
+    # 3. Fresh sweep against direction
+    if ticker_micro.get("sweep_fresh"):
+        sweep_dir = ticker_micro.get("sweep_direction")
+        if direction == "LONG" and sweep_dir == "SHORT":
+            count += 1
+        elif direction == "SHORT" and sweep_dir == "LONG":
+            count += 1
+
+    return count
 
 
 # ── Option selection ──────────────────────────────────────────────────────────

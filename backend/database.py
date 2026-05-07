@@ -187,6 +187,18 @@ class PaperTrade(Base):
     target_2r_price: Mapped[float] = mapped_column(Float)
     target_3r_price: Mapped[float] = mapped_column(Float)
 
+    # Partial exit tracking
+    original_contracts: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    contracts_remaining: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    realized_partials_usd: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    tp1_hit: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    tp1_contracts_sold: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    tp1_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    tp2_hit: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+    tp2_contracts_sold: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    tp2_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    stop_at_breakeven: Mapped[Optional[bool]] = mapped_column(Boolean, nullable=True)
+
     # Exit
     exit_ts: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
     exit_underlying_price: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
@@ -363,6 +375,28 @@ async def init_db():
                 await conn.execute(
                     __import__("sqlalchemy").text(
                         f"ALTER TABLE market_snapshots ADD COLUMN {col} {col_type}"
+                    )
+                )
+            except Exception:
+                pass  # column already exists
+
+        paper_trade_cols = [
+            ("original_contracts", "INTEGER"),
+            ("contracts_remaining", "INTEGER"),
+            ("realized_partials_usd", "REAL"),
+            ("tp1_hit", "INTEGER"),
+            ("tp1_contracts_sold", "INTEGER"),
+            ("tp1_price", "REAL"),
+            ("tp2_hit", "INTEGER"),
+            ("tp2_contracts_sold", "INTEGER"),
+            ("tp2_price", "REAL"),
+            ("stop_at_breakeven", "INTEGER"),
+        ]
+        for col, col_type in paper_trade_cols:
+            try:
+                await conn.execute(
+                    __import__("sqlalchemy").text(
+                        f"ALTER TABLE paper_trades ADD COLUMN {col} {col_type}"
                     )
                 )
             except Exception:

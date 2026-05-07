@@ -30,7 +30,7 @@ from typing import Optional
 
 from fastapi import WebSocket, WebSocketDisconnect
 
-from backend.config import ET, ALL_TICKERS
+from backend.config import ET, ALL_TICKERS, TRAILING_STOP_FACTOR
 from backend.strategy.paper_trader import paper_trader
 from backend.strategy.vix_regime import get_vix, get_regime
 from backend.strategy.time_filter import current_window, is_market_open
@@ -223,7 +223,13 @@ async def _build_payload() -> dict:
         bid = float(opt_q.get("bid", 0) or 0)
         ask = float(opt_q.get("ask", 0) or 0)
         mid = (bid + ask) / 2 if bid and ask else 0
-        unrealized = (mid - pos.entry_price) * pos.contracts * 100 if mid else None
+        remaining = pos.contracts_remaining if pos.contracts_remaining > 0 else pos.contracts
+        unrealized = (mid - pos.entry_price) * remaining * 100 if mid else None
+        trailing_stop = (
+            round(pos.entry_price * (1 + pos.peak_unrealized_pct * TRAILING_STOP_FACTOR / 100), 4)
+            if pos.tp2_hit else None
+        )
+        tp_stage = "TP2" if pos.tp2_hit else "TP1" if pos.tp1_hit else "ENTRY"
         positions.append({
             "trade_id": pos.trade_id,
             "ticker": pos.ticker,
@@ -233,7 +239,9 @@ async def _build_payload() -> dict:
             "option_type": pos.option_type,
             "option_expiry": pos.option_expiry,
             "entry_price": pos.entry_price,
-            "contracts": pos.contracts,
+            "entry_ts": pos.entry_ts.isoformat(),
+            "contracts": pos.original_contracts if pos.original_contracts else pos.contracts,
+            "contracts_remaining": remaining,
             "premium_paid": pos.premium_paid,
             "stop_price": pos.stop_price,
             "target_2r": pos.target_2r_price,
@@ -241,6 +249,13 @@ async def _build_payload() -> dict:
             "current_mid": round(mid, 4) if mid else None,
             "unrealized_pnl": round(unrealized, 2) if unrealized is not None else None,
             "unrealized_pct": round((mid / pos.entry_price - 1) * 100, 2) if mid and pos.entry_price else None,
+            "realized_partials_usd": round(pos.realized_partials_usd, 2),
+            "tp1_hit": pos.tp1_hit,
+            "tp2_hit": pos.tp2_hit,
+            "tp_stage": tp_stage,
+            "stop_at_breakeven": pos.stop_at_breakeven,
+            "peak_unrealized_pct": round(pos.peak_unrealized_pct, 2),
+            "trailing_stop_price": trailing_stop,
         })
 
     return {

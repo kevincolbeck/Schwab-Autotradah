@@ -700,16 +700,23 @@ async def _position_check_loop() -> None:
         if not _bot_running:
             continue
         try:
-            # Build per-ticker microstructure for key-level exit logic
+            # Build per-ticker microstructure for SL/TP/opposing-signal checks
             micro = {}
             for ticker in ALL_TICKERS:
-                fp  = get_footprint(ticker)
-                ob  = get_ob(ticker).get_state()
-                q   = stream_client.get_quote(ticker)
+                fp       = get_footprint(ticker)
+                ob       = get_ob(ticker).get_state()
+                q        = stream_client.get_quote(ticker)
+                flow     = options_flow_monitor.get_state(ticker)
+                absorbed, abs_side = fp.get_absorption()
                 micro[ticker] = {
                     "price": float(q.get("last", 0) or 0),
                     "footprint_delta_1m": fp.get_delta_1m(),
+                    "footprint_absorption": absorbed,
+                    "footprint_absorption_side": abs_side,
                     "l2_imbalance": ob.imbalance,
+                    "l2_imbalance_direction": ob.imbalance_direction(),
+                    "sweep_fresh": flow.is_sweep_fresh(),
+                    "sweep_direction": flow.sweep_direction,
                     "key_levels": get_key_levels(ticker),
                 }
             await paper_trader.check_positions(
