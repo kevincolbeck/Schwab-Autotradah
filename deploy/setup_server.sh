@@ -51,8 +51,8 @@ if [ ! -f "$APP_DIR/config.yaml" ]; then
     echo "    nano $APP_DIR/config.yaml"
     echo ""
     echo "  Also upload your token files from your local machine:"
-    echo "    scp token.json.enc ubuntu@<server-ip>:$APP_DIR/"
-    echo "    scp .token_key ubuntu@<server-ip>:$APP_DIR/"
+    echo "    scp token.json.enc ubuntu@5.161.236.123:$APP_DIR/"
+    echo "    scp .token_key ubuntu@5.161.236.123:$APP_DIR/"
     echo ""
     echo "  Press ENTER when done."
     read -r

@@ -3,7 +3,7 @@
 # Run from your LOCAL machine: bash deploy/update.sh
 set -e
 
-SERVER="ubuntu@YOUR_SERVER_IP"        # <-- replace with your server IP
+SERVER="ubuntu@5.161.236.123"
 REMOTE_DIR="/home/ubuntu/schwab-momentum-bot"
 SSH_KEY="$HOME/.ssh/id_equities"       # update if your key path differs
 
