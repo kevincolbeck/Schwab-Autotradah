@@ -1,0 +1,76 @@
+{
+  "name": "Momentum Trend + Pullback/Breakout Dual-Entry",
+  "description": "Long-term outperformance via strong momentum leaders with dual-entry setups and dynamic SMA exits",
+  "symbols": [
+    "ALL_US"
+  ],
+  "indicators": [
+    {
+      "length": 10,
+      "name": "sma_10",
+      "source": "close",
+      "type": "sma"
+    },
+    {
+      "length": 20,
+      "name": "sma_20",
+      "source": "close",
+      "type": "sma"
+    },
+    {
+      "length": 50,
+      "name": "sma_50",
+      "source": "close",
+      "type": "sma"
+    },
+    {
+      "length": 200,
+      "name": "sma_200",
+      "source": "close",
+      "type": "sma"
+    },
+    {
+      "length": 14,
+      "name": "rsi_14",
+      "source": "close",
+      "type": "rsi"
+    },
+    {
+      "length": 20,
+      "name": "vol_sma_20",
+      "source": "volume",
+      "type": "sma"
+    },
+    {
+      "length": 50,
+      "name": "spy_sma_50",
+      "source": "spy_close",
+      "type": "sma"
+    },
+    {
+      "length": 20,
+      "name": "atr_20",
+      "type": "atr"
+    },
+    {
+      "length": 20,
+      "name": "high_20",
+      "source": "high",
+      "type": "rolling_max"
+    }
+  ],
+  "entry_rule": "(close >= 15) & (spy_close > spy_sma_50) & (close > sma_200) & (sma_50 > sma_200) & (sma_10 > sma_20) & (sma_20 > sma_50) & (close / lag(close, 126) >= 1.50) & (atr_20 / close >= 0.025) & (rsi_14 >= 35) & (rsi_14 <= 70) & (volume >= vol_sma_20 * 1.2) & ((abs(close - sma_10) / sma_10 <= 0.02) | (abs(close - sma_20) / sma_20 <= 0.02) | (abs(close - sma_50) / sma_50 <= 0.02) | (close > high_20))",
+  "entry_rule_long": "(close >= 15) & (spy_close > spy_sma_50) & (close > sma_200) & (sma_50 > sma_200) & (sma_10 > sma_20) & (sma_20 > sma_50) & (close / lag(close, 126) >= 1.50) & (atr_20 / close >= 0.025) & (rsi_14 >= 35) & (rsi_14 <= 70) & (volume >= vol_sma_20 * 1.2) & ((abs(close - sma_10) / sma_10 <= 0.02) | (abs(close - sma_20) / sma_20 <= 0.02) | (abs(close - sma_50) / sma_50 <= 0.02) | (close > high_20))",
+  "entry_rule_short": "",
+  "exit_rule": "((abs(sma_10 - sma_20) / sma_20 > 0.05) & (close < sma_10)) | ((abs(sma_10 - sma_20) / sma_20 <= 0.05) & (close < sma_20))",
+  "entry_price_field": "open",
+  "use_intraday_vwap_stop": false,
+  "intraday_interval": "5m",
+  "position_size_mode": "risk_pct",
+  "position_size_pct": 20.0,
+  "risk_per_trade_pct": 1.0,
+  "max_positions": 999,
+  "stop_loss_pct": 6.0,
+  "take_profit_pct": 12.0,
+  "max_holding_days": 999
+}

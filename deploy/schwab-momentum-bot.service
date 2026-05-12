@@ -1,0 +1,22 @@
+[Unit]
+Description=Schwab Momentum Bot (Headless)
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/schwab-momentum-bot
+Environment="PATH=/home/ubuntu/schwab-momentum-bot/venv/bin:/usr/bin:/bin"
+ExecStart=/home/ubuntu/schwab-momentum-bot/venv/bin/python main_headless.py
+Restart=always
+RestartSec=30
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=schwab-momentum-bot
+
+# Allow time for clean EOD exit management before killing
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,107 @@
+{
+  "name": "Leader Breakout & Pullback Strategy - All US",
+  "description": "Buy strongest momentum leaders on breakout from tight consolidation or pullback to key moving average. Requires 50% gain over 126 days, aligned moving averages, favorable market regime (SPY > SMA50 with rising 10/20 SMAs over 5 days), 2:1 reward/risk, and $20M+ avg daily dollar volume for liquidity. Partial exit at 12% gain with stop moved to +0.5%, then hold as long as dynamic SMA exit criteria not met.",
+  "symbols": [
+    "ALL_US"
+  ],
+  "indicators": [
+    {
+      "length": 10,
+      "name": "sma_10",
+      "source": "close",
+      "type": "sma"
+    },
+    {
+      "length": 20,
+      "name": "sma_20",
+      "source": "close",
+      "type": "sma"
+    },
+    {
+      "length": 50,
+      "name": "sma_50",
+      "source": "close",
+      "type": "sma"
+    },
+    {
+      "length": 200,
+      "name": "sma_200",
+      "source": "close",
+      "type": "sma"
+    },
+    {
+      "length": 14,
+      "name": "rsi_14",
+      "source": "close",
+      "type": "rsi"
+    },
+    {
+      "length": 20,
+      "name": "atr_20",
+      "type": "atr"
+    },
+    {
+      "length": 20,
+      "name": "vol_sma_20",
+      "source": "volume",
+      "type": "sma"
+    },
+    {
+      "name": "avg_dollar_vol_20",
+      "type": "custom",
+      "formula": "(close * volume).rolling(20).mean()"
+    },
+    {
+      "length": 50,
+      "name": "spy_sma_50",
+      "source": "spy_close",
+      "type": "sma"
+    },
+    {
+      "length": 20,
+      "name": "high_20",
+      "source": "high",
+      "type": "rolling_max"
+    },
+    {
+      "length": 20,
+      "name": "low_20",
+      "source": "low",
+      "type": "rolling_min"
+    },
+    {
+      "name": "spy_sma_10",
+      "length": 10,
+      "source": "spy_close",
+      "type": "sma"
+    },
+    {
+      "name": "spy_sma_20",
+      "length": 20,
+      "source": "spy_close",
+      "type": "sma"
+    }
+  ],
+  "entry_rule": "close >= 1 & close / lag(close, 126) >= 1.5 & close > sma_200 & sma_50 > sma_200 & sma_10 > sma_20 & sma_20 > sma_50 & spy_close > spy_sma_50 & spy_sma_10 > lag(spy_sma_10, 5) & spy_sma_20 > lag(spy_sma_20, 5) & rsi_14 >= 35 & rsi_14 <= 70 & volume >= vol_sma_20 * 1.2 & atr_20 / close >= 0.025 & avg_dollar_vol_20 >= 20000000 & (((high_20 - low_20) / close < 0.15 & close > high_20) | (abs(close - sma_10) / close <= 0.02) | (abs(close - sma_20) / close <= 0.02) | (abs(close - sma_50) / close <= 0.02))",
+  "entry_rule_long": "close >= 1 & close / lag(close, 126) >= 1.5 & close > sma_200 & sma_50 > sma_200 & sma_10 > sma_20 & sma_20 > sma_50 & spy_close > spy_sma_50 & spy_sma_10 > lag(spy_sma_10, 5) & spy_sma_20 > lag(spy_sma_20, 5) & rsi_14 >= 35 & rsi_14 <= 70 & volume >= vol_sma_20 * 1.2 & atr_20 / close >= 0.025 & avg_dollar_vol_20 >= 20000000 & (((high_20 - low_20) / close < 0.15 & close > high_20) | (abs(close - sma_10) / close <= 0.02) | (abs(close - sma_20) / close <= 0.02) | (abs(close - sma_50) / close <= 0.02))",
+  "entry_rule_short": "",
+  "exit_rule": "(abs(sma_10 - sma_20) / sma_20 > 0.05 & close < sma_10) | (abs(sma_10 - sma_20) / sma_20 <= 0.05 & close < sma_20)",
+  "entry_price_field": "open",
+  "use_intraday_vwap_stop": false,
+  "intraday_interval": "5m",
+  "position_size_mode": "risk_pct",
+  "position_size_pct": 20.0,
+  "risk_per_trade_pct": 1.0,
+  "max_positions": 20,
+  "stop_loss_pct": 6.0,
+  "take_profit_pct": 0.0,
+  "take_profit_rules": [
+    {
+      "trigger_pct": 12.0,
+      "action": "sell_partial",
+      "sell_pct_of_position": 10.0,
+      "move_stop_to_pct": 0.5
+    }
+  ],
+  "max_holding_days": 0
+}

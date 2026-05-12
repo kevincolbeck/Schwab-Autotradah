@@ -1,0 +1,68 @@
+{
+  "name": "Mean Reversion Pullback",
+  "description": "Buy oversold pullbacks to key moving averages in strong uptrends",
+  "symbols": [
+    "ALL_US"
+  ],
+  "indicators": [
+    {
+      "length": 20,
+      "name": "sma_20",
+      "source": "close",
+      "type": "sma"
+    },
+    {
+      "length": 50,
+      "name": "sma_50",
+      "source": "close",
+      "type": "sma"
+    },
+    {
+      "length": 200,
+      "name": "sma_200",
+      "source": "close",
+      "type": "sma"
+    },
+    {
+      "length": 2,
+      "name": "rsi_2",
+      "source": "close",
+      "type": "rsi"
+    },
+    {
+      "length": 14,
+      "name": "atr_14",
+      "type": "atr"
+    },
+    {
+      "length": 20,
+      "name": "volume_20",
+      "source": "volume",
+      "type": "sma"
+    }
+  ],
+  "entry_rule": "close > sma_200 & sma_20 > sma_50 & close < sma_20 & rsi_2 < 10 & volume > volume_20 * 1.2 & close > 10",
+  "entry_rule_long": "close > sma_200 & sma_20 > sma_50 & close < sma_20 & rsi_2 < 10 & volume > volume_20 * 1.2 & close > 10",
+  "entry_rule_short": "",
+  "exit_rule": "close > sma_20 | rsi_2 > 70",
+  "entry_price_field": "open",
+  "use_intraday_vwap_stop": false,
+  "intraday_interval": "5m",
+  "position_size_mode": "risk_pct",
+  "position_size_pct": 10.0,
+  "risk_per_trade_pct": 0.75,
+  "max_positions": 8,
+  "stop_loss_pct": 4.0,
+  "stop_loss_field": "",
+  "exit_rule_after_tp": false,
+  "take_profit_pct": 8.0,
+  "take_profit_rules": [],
+  "max_holding_days": 10,
+  "regime_hit_rate_window": 20,
+  "regime_trend_threshold": 0.0,
+  "regime_chop_size_multiplier": 1.0,
+  "max_positions_trend": 0,
+  "max_positions_chop": 0,
+  "daily_loss_lock_r": 0.0,
+  "max_total_open_risk_r": 0.0
+}

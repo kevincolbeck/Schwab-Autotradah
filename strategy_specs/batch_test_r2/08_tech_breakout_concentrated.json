@@ -1,0 +1,29 @@
+{
+  "name": "R2: Tech Breakout Concentrated (50% per stock)",
+  "description": "Concentrated 50% positions in breakout tech stocks. Max 2 positions.",
+  "symbols": ["NVDA", "TSLA", "MSFT", "AAPL", "META", "GOOGL", "AMZN", "AMD", "AVGO"],
+  "indicators": [
+    {"type": "sma", "length": 50, "source": "close", "name": "sma_50"},
+    {"type": "sma", "length": 200, "source": "close", "name": "sma_200"},
+    {"type": "ema", "length": 21, "source": "close", "name": "ema_21"},
+    {"type": "atr", "length": 14, "name": "atr_14"},
+    {"type": "sma", "length": 20, "source": "volume", "name": "vol_sma_20"},
+    {"type": "rolling_max", "length": 52, "source": "high", "name": "high_52"},
+    {"type": "external", "symbol": "SPY", "field": "close", "name": "spy_close"},
+    {"type": "sma", "length": 50, "source": "spy_close", "name": "spy_sma_50"},
+    {"type": "custom", "name": "near_high", "formula": "close / high_52"},
+    {"type": "custom", "name": "stop_dist", "formula": "atr_14 * 2.0"}
+  ],
+  "entry_rule_long": "close > sma_200 & sma_50 > sma_200 & spy_close > spy_sma_50 & close > ema_21 & near_high > 0.95 & volume > vol_sma_20 * 1.3",
+  "exit_rule": "close < ema_21 * 0.97",
+  "entry_price_field": "close",
+  "ranking_field": "near_high",
+  "position_size_mode": "notional_pct",
+  "position_size_pct": 50.0,
+  "max_positions": 2,
+  "stop_loss_field": "stop_dist",
+  "take_profit_rules": [
+    {"trigger_r": 3.0, "action": "sell_partial", "sell_pct_of_position": 50.0, "move_stop_to_pct": 0.0}
+  ],
+  "max_holding_days": 0
+}

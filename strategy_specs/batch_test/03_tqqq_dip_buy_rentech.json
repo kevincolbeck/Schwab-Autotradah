@@ -1,0 +1,22 @@
+{
+  "name": "TQQQ Dip Buy in Trend (RenTech Mean Reversion)",
+  "description": "Buy TQQQ dips when QQQ RSI5 is oversold but trend is intact. Sell on RSI recovery.",
+  "symbols": ["TQQQ"],
+  "indicators": [
+    {"type": "external", "symbol": "QQQ", "field": "close", "name": "qqq_close"},
+    {"type": "sma", "length": 50, "source": "qqq_close", "name": "qqq_sma_50"},
+    {"type": "sma", "length": 200, "source": "qqq_close", "name": "qqq_sma_200"},
+    {"type": "rsi", "length": 5, "source": "qqq_close", "name": "qqq_rsi_5"},
+    {"type": "rsi", "length": 14, "source": "qqq_close", "name": "qqq_rsi_14"},
+    {"type": "sma", "length": 5, "source": "close", "name": "sma_5"},
+    {"type": "sma", "length": 20, "source": "close", "name": "sma_20"}
+  ],
+  "entry_rule_long": "qqq_close > qqq_sma_200 & qqq_sma_50 > qqq_sma_200 & qqq_rsi_5 < 25",
+  "exit_rule": "qqq_rsi_5 > 70 | close < sma_20 * 0.90",
+  "entry_price_field": "close",
+  "position_size_mode": "notional_pct",
+  "position_size_pct": 100.0,
+  "max_positions": 1,
+  "stop_loss_pct": 12.0,
+  "max_holding_days": 15
+}

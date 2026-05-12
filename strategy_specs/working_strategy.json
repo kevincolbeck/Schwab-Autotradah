@@ -1,0 +1,23 @@
+{
+  "name": "Leveraged ETF Rotation v14: Best momentum 3x ETF, SMA10 exit",
+  "symbols": ["TQQQ", "TECL", "SOXL", "UPRO", "LABU", "TNA"],
+  "indicators": [
+    {"length": 3, "name": "ema_3", "source": "close", "type": "ema"},
+    {"length": 10, "name": "sma_10", "source": "close", "type": "sma"},
+    {"length": 20, "name": "sma_20", "source": "close", "type": "sma"},
+    {"length": 50, "name": "sma_50", "source": "close", "type": "sma"},
+    {"length": 100, "name": "sma_100", "source": "close", "type": "sma"},
+    {"length": 20, "name": "vol_sma_20", "source": "volume", "type": "sma"},
+    {"name": "momentum_score", "type": "custom", "formula": "close / sma_100"}
+  ],
+  "entry_rule": "close > ema_3 & sma_20 > sma_50 & sma_50 > sma_100 & close > sma_20",
+  "entry_rule_long": "close > ema_3 & sma_20 > sma_50 & sma_50 > sma_100 & close > sma_20",
+  "entry_rule_short": "",
+  "exit_rule": "close < sma_10",
+  "entry_price_field": "close",
+  "ranking_field": "momentum_score",
+  "position_size_mode": "notional_pct",
+  "position_size_pct": 100.0,
+  "max_positions": 1,
+  "stop_loss_pct": 0.0
+}

@@ -1,0 +1,21 @@
+{
+  "name": "TQQQ Gap Reversal (RenTech Mean Reversion)",
+  "description": "Buy TQQQ when QQQ gaps down 1%+ in an uptrend. Classic mean reversion play.",
+  "symbols": ["TQQQ"],
+  "indicators": [
+    {"type": "external", "symbol": "QQQ", "field": "close", "name": "qqq_close"},
+    {"type": "external", "symbol": "QQQ", "field": "open", "name": "qqq_open"},
+    {"type": "sma", "length": 50, "source": "qqq_close", "name": "qqq_sma_50"},
+    {"type": "sma", "length": 200, "source": "qqq_close", "name": "qqq_sma_200"},
+    {"type": "sma", "length": 10, "source": "close", "name": "sma_10"},
+    {"type": "sma", "length": 20, "source": "close", "name": "sma_20"}
+  ],
+  "entry_rule_long": "qqq_open < lag(qqq_close, 1) * 0.99 & qqq_close > qqq_sma_50 & qqq_sma_50 > qqq_sma_200",
+  "exit_rule": "close > sma_10 | close < sma_20 * 0.88",
+  "entry_price_field": "open",
+  "position_size_mode": "notional_pct",
+  "position_size_pct": 100.0,
+  "max_positions": 1,
+  "stop_loss_pct": 10.0,
+  "max_holding_days": 10
+}

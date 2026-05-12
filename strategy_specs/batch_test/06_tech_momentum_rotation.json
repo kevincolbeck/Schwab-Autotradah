@@ -1,0 +1,30 @@
+{
+  "name": "Tech Momentum Rotation (Strongest Leader)",
+  "description": "Rotate into the highest momentum large cap tech stock. Risk-based sizing with ATR stops.",
+  "symbols": ["NVDA", "TSLA", "MSFT", "AAPL", "META", "GOOGL", "AMZN", "AMD", "AVGO", "CRM", "NFLX"],
+  "indicators": [
+    {"type": "sma", "length": 50, "source": "close", "name": "sma_50"},
+    {"type": "sma", "length": 100, "source": "close", "name": "sma_100"},
+    {"type": "sma", "length": 200, "source": "close", "name": "sma_200"},
+    {"type": "ema", "length": 21, "source": "close", "name": "ema_21"},
+    {"type": "sma", "length": 20, "source": "volume", "name": "vol_sma_20"},
+    {"type": "atr", "length": 14, "name": "atr_14"},
+    {"type": "external", "symbol": "SPY", "field": "close", "name": "spy_close"},
+    {"type": "sma", "length": 50, "source": "spy_close", "name": "spy_sma_50"},
+    {"type": "custom", "name": "momentum_score", "formula": "close / sma_100"},
+    {"type": "custom", "name": "stop_dist", "formula": "atr_14 * 2.0"}
+  ],
+  "entry_rule_long": "close > sma_50 & sma_50 > sma_200 & ema_21 > sma_50 & spy_close > spy_sma_50 & volume > vol_sma_20 * 1.2 & atr_14 / close > 0.015",
+  "exit_rule": "close < ema_21",
+  "entry_price_field": "close",
+  "ranking_field": "momentum_score",
+  "position_size_mode": "risk_pct",
+  "risk_per_trade_pct": 2.0,
+  "max_positions": 3,
+  "stop_loss_field": "stop_dist",
+  "take_profit_rules": [
+    {"trigger_r": 1.5, "action": "sell_partial", "sell_pct_of_position": 25.0, "move_stop_to_pct": 0.0},
+    {"trigger_r": 3.0, "action": "sell_partial", "sell_pct_of_position": 50.0, "move_stop_to_pct": 0.5}
+  ],
+  "max_holding_days": 0
+}

@@ -1,0 +1,152 @@
+{
+  "name": "ICT Intraday Dual Entry v1",
+  "description": "5m ICT-style day strategy: HTF trend + SR, fair value gaps, order-block reclaim, dual entries, and dynamic exits.",
+  "symbols": [
+    "ALL_US"
+  ],
+  "indicators": [
+    {
+      "type": "external",
+      "symbol": "SPY",
+      "field": "close",
+      "name": "spy_close"
+    },
+    {
+      "type": "ema",
+      "length": 21,
+      "source": "close",
+      "name": "ema_21"
+    },
+    {
+      "type": "ema",
+      "length": 96,
+      "source": "close",
+      "name": "ema_96"
+    },
+    {
+      "type": "ema",
+      "length": 390,
+      "source": "close",
+      "name": "ema_390"
+    },
+    {
+      "type": "ema",
+      "length": 78,
+      "source": "spy_close",
+      "name": "spy_ema_78"
+    },
+    {
+      "type": "ema",
+      "length": 390,
+      "source": "spy_close",
+      "name": "spy_ema_390"
+    },
+    {
+      "type": "atr",
+      "length": 20,
+      "name": "atr_20"
+    },
+    {
+      "type": "sma",
+      "length": 20,
+      "source": "volume",
+      "name": "vol_sma_20"
+    },
+    {
+      "type": "rolling_max",
+      "length": 12,
+      "source": "high",
+      "name": "range_high_12"
+    },
+    {
+      "type": "rolling_min",
+      "length": 12,
+      "source": "low",
+      "name": "range_low_12"
+    },
+    {
+      "type": "rolling_max",
+      "length": 78,
+      "source": "high",
+      "name": "day_high_78"
+    },
+    {
+      "type": "rolling_min",
+      "length": 78,
+      "source": "low",
+      "name": "day_low_78"
+    },
+    {
+      "type": "lag",
+      "source": "day_high_78",
+      "periods": 1,
+      "name": "prev_day_high"
+    },
+    {
+      "type": "lag",
+      "source": "day_low_78",
+      "periods": 1,
+      "name": "prev_day_low"
+    },
+    {
+      "type": "custom",
+      "name": "minutes_from_open",
+      "formula": "(datetime.dt.hour * 60 + datetime.dt.minute) - 570"
+    },
+    {
+      "type": "custom",
+      "name": "dollar_vol_5m",
+      "formula": "close * volume"
+    },
+    {
+      "type": "custom",
+      "name": "range_pct_12",
+      "formula": "(range_high_12 - range_low_12) / close"
+    },
+    {
+      "type": "custom",
+      "name": "fvg_bull",
+      "formula": "(low > high[2]) & ((low - high[2]) / atr_20 >= 0.15)"
+    },
+    {
+      "type": "custom",
+      "name": "ob_reclaim",
+      "formula": "(close[1] < open[1]) & (low <= high[1]) & (close >= open[1])"
+    },
+    {
+      "type": "custom",
+      "name": "stop_dist",
+      "formula": "np.maximum(atr_20 * 1.2, close * 0.004)"
+    }
+  ],
+  "entry_rule_long": "close >= 5 & minutes_from_open >= 15 & minutes_from_open <= 360 & dollar_vol_5m >= 300000 & ema_21 > ema_96 & ema_96 > ema_390 & spy_ema_78 > spy_ema_390 & atr_20 / close >= 0.002 & volume >= vol_sma_20 * 1.5 & ((close > prev_day_high & close > range_high_12 & range_pct_12 <= 0.012 & fvg_bull) | (ob_reclaim & abs(close - ema_21) / close <= 0.0035 & close > session_vwap & close > prev_day_low))",
+  "entry_rule_short": "",
+  "exit_rule": "position_side == 'LONG' & (close < session_vwap | (abs(ema_21 - ema_96) / ema_96 > 0.02 & close < ema_21) | (abs(ema_21 - ema_96) / ema_96 <= 0.02 & close < ema_96) | minutes_from_open >= 385)",
+  "entry_price_field": "close",
+  "backtest_timeframe": "5m",
+  "use_intraday_vwap_stop": false,
+  "intraday_interval": "5m",
+  "position_size_mode": "risk_pct",
+  "risk_per_trade_pct": 0.75,
+  "position_size_pct": 20.0,
+  "max_positions": 8,
+  "stop_loss_pct": 0.0,
+  "stop_loss_field": "stop_dist",
+  "take_profit_pct": 0.0,
+  "take_profit_rules": [
+    {
+      "trigger_r": 1.0,
+      "action": "sell_partial",
+      "sell_pct_of_position": 25.0,
+      "move_stop_to_pct": 0.0
+    },
+    {
+      "trigger_r": 2.0,
+      "action": "sell_partial",
+      "sell_pct_of_position": 25.0,
+      "move_stop_to_pct": 0.5
+    }
+  ],
+  "exit_rule_after_tp": false,
+  "max_holding_days": 0
+}

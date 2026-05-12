@@ -1,0 +1,33 @@
+{
+  "name": "R2: ICT FVG + Order Block Fixed Syntax",
+  "description": "Fixed: uses .shift() for lookback. Daily ICT concepts on large cap tech.",
+  "symbols": ["NVDA", "TSLA", "MSFT", "AAPL", "META", "GOOGL", "AMZN", "AMD"],
+  "indicators": [
+    {"type": "external", "symbol": "SPY", "field": "close", "name": "spy_close"},
+    {"type": "sma", "length": 200, "source": "close", "name": "sma_200"},
+    {"type": "sma", "length": 50, "source": "close", "name": "sma_50"},
+    {"type": "ema", "length": 21, "source": "close", "name": "ema_21"},
+    {"type": "atr", "length": 14, "name": "atr_14"},
+    {"type": "sma", "length": 20, "source": "volume", "name": "vol_sma_20"},
+    {"type": "sma", "length": 50, "source": "spy_close", "name": "spy_sma_50"},
+    {"type": "rolling_max", "length": 20, "source": "high", "name": "high_20"},
+    {"type": "lag", "source": "high", "periods": 2, "name": "high_2ago"},
+    {"type": "lag", "source": "close", "periods": 1, "name": "prev_close"},
+    {"type": "lag", "source": "open", "periods": 1, "name": "prev_open"},
+    {"type": "lag", "source": "high", "periods": 1, "name": "prev_high"},
+    {"type": "custom", "name": "fvg_bull", "formula": "(low > high_2ago) & ((low - high_2ago) / atr_14 >= 0.1)"},
+    {"type": "custom", "name": "ob_reclaim", "formula": "(prev_close < prev_open) & (low <= prev_high) & (close >= prev_open)"},
+    {"type": "custom", "name": "stop_dist", "formula": "atr_14 * 1.5"}
+  ],
+  "entry_rule_long": "close > sma_200 & sma_50 > sma_200 & ema_21 > sma_50 & spy_close > spy_sma_50 & volume >= vol_sma_20 * 1.3 & (fvg_bull | ob_reclaim)",
+  "exit_rule": "close < ema_21",
+  "entry_price_field": "close",
+  "position_size_mode": "risk_pct",
+  "risk_per_trade_pct": 3.0,
+  "max_positions": 5,
+  "stop_loss_field": "stop_dist",
+  "take_profit_rules": [
+    {"trigger_r": 2.0, "action": "sell_partial", "sell_pct_of_position": 50.0, "move_stop_to_pct": 0.0}
+  ],
+  "max_holding_days": 0
+}

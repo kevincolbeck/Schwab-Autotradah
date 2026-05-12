@@ -1,0 +1,35 @@
+# ── Secrets — never commit ────────────────────────────────────────────────────
+config.yaml
+.token_key
+token.json
+token.json.enc
+*.enc
+*.key
+allocated_balance.json
+
+# ── Database & logs ───────────────────────────────────────────────────────────
+*.db
+*.log
+backtest_runs/
+auto_universe_cache.json
+
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+venv/
+.venv/
+*.egg-info/
+
+# ── PyInstaller build output ──────────────────────────────────────────────────
+dist/
+build/
+*.spec
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── IDE ───────────────────────────────────────────────────────────────────────
+.vscode/
+.idea/

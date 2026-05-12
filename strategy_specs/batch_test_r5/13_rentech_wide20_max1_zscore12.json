@@ -1,0 +1,24 @@
+{
+  "name": "R5-13: Wide 20 + Max 1 + ZScore -1.2 (Zero Leverage)",
+  "description": "20-stock universe, max 1, ZScore -1.2 for more trades. True no-leverage, more signals.",
+  "symbols": ["NVDA", "TSLA", "MSFT", "AAPL", "META", "GOOGL", "AMZN", "AMD", "AVGO", "CRM", "NFLX", "ORCL", "UBER", "NOW", "SHOP", "PLTR", "MU", "MRVL", "PANW", "SNPS"],
+  "indicators": [
+    {"type": "sma", "length": 50, "source": "close", "name": "sma_50"},
+    {"type": "sma", "length": 200, "source": "close", "name": "sma_200"},
+    {"type": "zscore", "length": 10, "source": "close", "name": "zscore_10"},
+    {"type": "rsi", "length": 3, "source": "close", "name": "rsi_3"},
+    {"type": "sma", "length": 5, "source": "close", "name": "sma_5"},
+    {"type": "external", "symbol": "SPY", "field": "close", "name": "spy_close"},
+    {"type": "sma", "length": 50, "source": "spy_close", "name": "spy_sma_50"},
+    {"type": "custom", "name": "momentum", "formula": "close / sma_50"}
+  ],
+  "entry_rule_long": "close > sma_50 & spy_close > spy_sma_50 & zscore_10 < -1.2 & rsi_3 < 25 & momentum > 1.0",
+  "exit_rule": "close > sma_5 & rsi_3 > 60",
+  "entry_price_field": "close",
+  "ranking_field": "momentum",
+  "position_size_mode": "notional_pct",
+  "position_size_pct": 100.0,
+  "max_positions": 1,
+  "stop_loss_pct": 0.0,
+  "max_holding_days": 15
+}

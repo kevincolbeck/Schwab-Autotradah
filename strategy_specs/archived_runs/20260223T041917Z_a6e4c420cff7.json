@@ -1,0 +1,92 @@
+{
+  "name": "High Momentum Consolidation & Pullback Strategy",
+  "description": "Long-term momentum strategy targeting 50%+ gainers with dual entry criteria: consolidation breakouts OR moving average pullbacks",
+  "symbols": [
+    "ALL_US"
+  ],
+  "indicators": [
+    {
+      "length": 10,
+      "name": "sma_10",
+      "source": "close",
+      "type": "sma"
+    },
+    {
+      "length": 20,
+      "name": "sma_20",
+      "source": "close",
+      "type": "sma"
+    },
+    {
+      "length": 50,
+      "name": "sma_50",
+      "source": "close",
+      "type": "sma"
+    },
+    {
+      "length": 200,
+      "name": "sma_200",
+      "source": "close",
+      "type": "sma"
+    },
+    {
+      "length": 14,
+      "name": "rsi_14",
+      "source": "close",
+      "type": "rsi"
+    },
+    {
+      "length": 20,
+      "name": "atr_20",
+      "type": "atr"
+    },
+    {
+      "length": 20,
+      "name": "volume_20",
+      "source": "volume",
+      "type": "sma"
+    },
+    {
+      "length": 1,
+      "name": "close_126",
+      "offset": 126,
+      "source": "close",
+      "type": "sma"
+    },
+    {
+      "length": 1,
+      "name": "high_20",
+      "offset": 20,
+      "source": "high",
+      "type": "sma"
+    },
+    {
+      "length": 1,
+      "name": "low_20",
+      "offset": 20,
+      "source": "low",
+      "type": "sma"
+    },
+    {
+      "length": 50,
+      "name": "spy_sma_50",
+      "source": "spy_close",
+      "type": "sma"
+    }
+  ],
+  "entry_rule": "close >= 15 & close / close_126 > 1.5 & close > sma_200 & sma_10 > sma_20 & sma_20 > sma_50 & spy_close > spy_sma_50 & volume > volume_20 * 1.2 & atr_20 / close > 0.025 & rsi_14 > 35 & rsi_14 < 70 & ((((high_20 - low_20) / close < 0.15) & (close > high_20)) | (abs(close - sma_10) / close < 0.02) | (abs(close - sma_20) / close < 0.02) | (abs(close - sma_50) / close < 0.02))",
+  "entry_rule_long": "close >= 15 & close / close_126 > 1.5 & close > sma_200 & sma_10 > sma_20 & sma_20 > sma_50 & spy_close > spy_sma_50 & volume > volume_20 * 1.2 & atr_20 / close > 0.025 & rsi_14 > 35 & rsi_14 < 70 & ((((high_20 - low_20) / close < 0.15) & (close > high_20)) | (abs(close - sma_10) / close < 0.02) | (abs(close - sma_20) / close < 0.02) | (abs(close - sma_50) / close < 0.02))",
+  "entry_rule_short": "",
+  "exit_rule": "((sma_20 / sma_10 > 1.05) & (close < sma_10)) | ((sma_20 / sma_10 <= 1.05) & (close < sma_20))",
+  "entry_price_field": "open",
+  "use_intraday_vwap_stop": false,
+  "intraday_interval": "5m",
+  "position_size_mode": "risk_pct",
+  "position_size_pct": 15.0,
+  "risk_per_trade_pct": 1.0,
+  "max_positions": 999,
+  "stop_loss_pct": 6.0,
+  "take_profit_pct": 12.0,
+  "take_profit_rules": [],
+  "max_holding_days": 0
+}

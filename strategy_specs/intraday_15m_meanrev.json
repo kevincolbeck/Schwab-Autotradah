@@ -1,0 +1,24 @@
+{
+  "name": "Intraday 15m Mean Reversion v3",
+  "description": "Fast intraday mean reversion on 15-min bars. RSI(2)<25 for quick oversold, ZScore(20)<-1.0 for dip detection. Short SMA(50) trend filter. Exit on price > SMA(10) with RSI(3)>55.",
+  "backtest_timeframe": "15m",
+  "symbols": ["NVDA", "TSLA", "AAPL", "TQQQ"],
+  "indicators": [
+    {"type": "sma", "length": 50, "source": "close", "name": "sma_50"},
+    {"type": "zscore", "length": 20, "source": "close", "name": "zscore_20"},
+    {"type": "rsi", "length": 2, "source": "close", "name": "rsi_2"},
+    {"type": "rsi", "length": 3, "source": "close", "name": "rsi_3"},
+    {"type": "sma", "length": 10, "source": "close", "name": "sma_10"},
+    {"type": "external", "symbol": "SPY", "field": "close", "name": "spy_close"},
+    {"type": "sma", "length": 50, "source": "spy_close", "name": "spy_sma_50"}
+  ],
+  "entry_rule_long": "close > sma_50 & spy_close > spy_sma_50 & zscore_20 < -1.0 & rsi_2 < 25",
+  "exit_rule": "close > sma_10 & rsi_3 > 55",
+  "entry_price_field": "close",
+  "ranking_field": "zscore_20",
+  "position_size_mode": "notional_pct",
+  "position_size_pct": 60.0,
+  "max_positions": 2,
+  "stop_loss_pct": 2.0,
+  "max_holding_days": 10
+}

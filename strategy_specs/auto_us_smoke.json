@@ -1,0 +1,22 @@
+{
+  "name": "Auto US Strategy",
+  "description": "",
+  "symbols": [
+    "ALL_US"
+  ],
+  "indicators": [],
+  "entry_rule": "close > open",
+  "entry_rule_long": "close > open",
+  "entry_rule_short": "",
+  "exit_rule": "close < open",
+  "entry_price_field": "close",
+  "use_intraday_vwap_stop": false,
+  "intraday_interval": "5m",
+  "position_size_mode": "notional_pct",
+  "position_size_pct": 10.0,
+  "risk_per_trade_pct": 0.75,
+  "max_positions": 3,
+  "stop_loss_pct": 0.0,
+  "take_profit_pct": 0.0,
+  "max_holding_days": 0
+}

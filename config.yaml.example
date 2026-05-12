@@ -1,0 +1,139 @@
+# Schwab Momentum Bot Configuration
+# All thresholds are editable here. The bot uses these defaults if values are missing.
+
+schwab:
+  client_id: "YOUR_SCHWAB_CLIENT_ID"
+  client_secret: "YOUR_SCHWAB_CLIENT_SECRET"
+  redirect_url: "https://127.0.0.1:8182/callback"
+  token_file: "token.json"
+  account_hash: ""
+
+universe:
+  source: "watchlists"
+  watchlist_names:
+    - "LEADERS_1M"
+    - "LEADERS_3M"
+    - "LEADERS_6M"
+  scanner_names:
+    - "qullamaggie 1 month"
+    - "qullamaggie 3 month"
+    - "qullamaggie 6 month"
+    - "test scanner"
+  scanner_min_adr_pct: 4.5
+  scanner_min_dollar_vol: 20000000
+  scanner_1m_min_return_pct: 35.0
+  scanner_3m_min_return_pct: 35.0
+  scanner_6m_min_return_pct: 50.0
+  test_scanner_lookback_days: 63
+  test_scanner_min_gain_pct: 100.0
+  test_scanner_consolidation_window: 10
+  test_scanner_adr_period: 20
+  test_scanner_min_adr_pct: 7.0
+  test_scanner_min_avg_dollar_vol: 16500000
+  scanner_history_dir: "scanner_history"
+  scanner_carry_forward_days: 1
+  csv_fallback_dir: "universe_csv"
+  use_csv_fallback: false
+
+eligibility:
+  min_price: 5.0
+  min_avg_dollar_volume_20d: 20000000.0
+  max_spread_pct: 0.20
+  us_equity_only: true
+
+trend_quality:
+  require_above_sma50: true
+  sma50_slope_lookback: 10
+  require_above_sma200: true
+  require_relative_strength_vs_spy: false
+  relative_strength_months: 3
+
+contraction:
+  atr_period: 14
+  atr_percentile_window: 120
+  atr_percentile_threshold: 15.0
+  range_short: 20
+  range_long: 20
+  tight_closes_window: 5
+  tight_closes_atr_mult: 1.5
+  min_conditions_pass: 2
+
+regime:
+  benchmark: "SPY"
+  sma_short: 10
+  sma_long: 20
+  decline_consecutive_days: 3
+  rise_consecutive_days: 2
+  require_close_above_sma20: false
+  cooldown_days: 3
+  hit_rate_window: 20
+  trend_hit_rate_threshold: 0.50
+  chop_size_multiplier: 0.50
+  chop_min_multiplier: 0.35
+  chop_max_multiplier: 0.60
+  chop_breakouts_enabled: false
+  chop_stricter_filters: true
+
+breakout:
+  lookback: 20
+  entry_buffer_pct: 0.15
+  limit_offset_pct: 0.30
+  min_rel_vol_pace: 1.2
+  max_wait_minutes: 3
+  trigger_start_hour: 10
+  trigger_start_minute: 0
+  trigger_end_hour: 15
+  trigger_end_minute: 40
+
+pullback:
+  use_sma20: true
+  use_sma50: true
+  entry_above_reclaim_close: false
+  stop_buffer_pct: 0.15
+
+stop:
+  stop_buffer_pct: 0.0
+  breakeven_buffer_pct: 0.0
+
+sizing:
+  risk_per_trade_pct: 1.0
+  risk_min_pct: 0.05
+  risk_max_pct: 2.0
+  max_positions_trend: 999
+  max_positions_chop: 999
+  max_total_open_risk_r: 999.0
+  max_position_pct_equity: 15.0
+
+eod_exit:
+  sma_closeness_threshold: 5.0
+  eod_window_minutes: 5
+  use_moc_if_available: true
+
+safety:
+  daily_loss_lock_r: 3.0
+  max_spread_reject_pct: 0.20
+  stale_data_seconds: 60
+  reconciliation_interval_seconds: 15
+  signal_scan_interval_seconds: 30
+
+app:
+  shadow_mode: true
+  manage_exits_while_off: true
+  enable_addons: false
+  reentry_cooldown_days: 1
+  db_path: "momentum_bot.db"
+  log_level: "INFO"
+
+ai_chat:
+  anthropic_api_key: "YOUR_ANTHROPIC_API_KEY"
+
+data:
+  backtest_data_source: "auto"
+  polygon_api_key: "YOUR_POLYGON_API_KEY"
+  default_history_years: 20
+
+strategy_runtime:
+  active_backtest_strategy: "rule_based"
+  active_live_strategy: "rule_based"
+  active_strategy_spec_path: "strategy_specs/live_rentech_meanrev.json"
+  allocated_capital: 1000.0

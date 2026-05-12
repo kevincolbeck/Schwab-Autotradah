@@ -1,0 +1,28 @@
+{
+  "name": "AAPL Mean Reversion",
+  "description": "",
+  "symbols": [
+    "AAPL"
+  ],
+  "indicators": [
+    {
+      "name": "sma_20",
+      "type": "sma",
+      "source": "close",
+      "length": 20
+    },
+    {
+      "name": "rsi_14",
+      "type": "rsi",
+      "source": "close",
+      "length": 14
+    }
+  ],
+  "entry_rule": "close < sma_20 * 0.98 & rsi_14 < 35",
+  "exit_rule": "close >= sma_20 | rsi_14 > 60",
+  "position_size_pct": 25.0,
+  "max_positions": 1,
+  "stop_loss_pct": 5.0,
+  "take_profit_pct": 0.0,
+  "max_holding_days": 20
+}

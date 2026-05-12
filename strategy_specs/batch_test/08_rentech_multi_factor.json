@@ -1,0 +1,29 @@
+{
+  "name": "RenTech Multi-Factor (Momentum+MeanRev+Vol)",
+  "description": "Renaissance-inspired: combine momentum (above SMA), mean reversion (RSI dip), and volatility contraction. Multi-stock.",
+  "symbols": ["NVDA", "TSLA", "MSFT", "AAPL", "META", "GOOGL", "AMZN", "AMD", "AVGO", "NFLX"],
+  "indicators": [
+    {"type": "sma", "length": 50, "source": "close", "name": "sma_50"},
+    {"type": "sma", "length": 200, "source": "close", "name": "sma_200"},
+    {"type": "ema", "length": 21, "source": "close", "name": "ema_21"},
+    {"type": "rsi", "length": 14, "source": "close", "name": "rsi_14"},
+    {"type": "rsi", "length": 5, "source": "close", "name": "rsi_5"},
+    {"type": "atr", "length": 14, "name": "atr_14"},
+    {"type": "sma", "length": 20, "source": "volume", "name": "vol_sma_20"},
+    {"type": "stddev", "length": 20, "source": "close", "name": "stddev_20"},
+    {"type": "external", "symbol": "SPY", "field": "close", "name": "spy_close"},
+    {"type": "sma", "length": 50, "source": "spy_close", "name": "spy_sma_50"},
+    {"type": "custom", "name": "vol_ratio", "formula": "stddev_20 / close"},
+    {"type": "custom", "name": "momentum_score", "formula": "close / sma_50"},
+    {"type": "custom", "name": "stop_dist", "formula": "atr_14 * 1.5"}
+  ],
+  "entry_rule_long": "close > sma_200 & sma_50 > sma_200 & spy_close > spy_sma_50 & rsi_5 < 30 & rsi_14 > 35 & rsi_14 < 65 & vol_ratio < 0.04 & volume > vol_sma_20 * 0.8",
+  "exit_rule": "rsi_5 > 75 | close < sma_50",
+  "entry_price_field": "close",
+  "ranking_field": "momentum_score",
+  "position_size_mode": "risk_pct",
+  "risk_per_trade_pct": 2.0,
+  "max_positions": 4,
+  "stop_loss_field": "stop_dist",
+  "max_holding_days": 20
+}

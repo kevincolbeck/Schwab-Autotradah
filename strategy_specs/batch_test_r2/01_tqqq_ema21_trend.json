@@ -1,0 +1,19 @@
+{
+  "name": "R2: TQQQ EMA21 Trend (Wide Exit)",
+  "description": "Simple: hold TQQQ when QQQ above EMA21 and SMA50. Exit on EMA21 break. Wider to avoid whipsaws.",
+  "symbols": ["TQQQ"],
+  "indicators": [
+    {"type": "external", "symbol": "QQQ", "field": "close", "name": "qqq_close"},
+    {"type": "ema", "length": 21, "source": "qqq_close", "name": "qqq_ema_21"},
+    {"type": "sma", "length": 50, "source": "qqq_close", "name": "qqq_sma_50"},
+    {"type": "sma", "length": 20, "source": "close", "name": "sma_20"}
+  ],
+  "entry_rule_long": "qqq_close > qqq_ema_21 & qqq_ema_21 > qqq_sma_50",
+  "exit_rule": "close < sma_20",
+  "entry_price_field": "close",
+  "position_size_mode": "notional_pct",
+  "position_size_pct": 100.0,
+  "max_positions": 1,
+  "stop_loss_pct": 0.0,
+  "max_holding_days": 0
+}

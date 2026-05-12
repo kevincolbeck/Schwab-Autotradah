@@ -1,0 +1,119 @@
+{
+  "name": "Dual Entry Momentum Strategy - Extended Consolidations",
+  "description": "Two separate entry criteria: extended consolidation breakouts (7+ days) OR pullback entries in 50%+ momentum stocks",
+  "symbols": [
+    "ALL_US"
+  ],
+  "indicators": [
+    {
+      "length": 10,
+      "name": "sma_10",
+      "source": "close",
+      "type": "sma"
+    },
+    {
+      "length": 20,
+      "name": "sma_20",
+      "source": "close",
+      "type": "sma"
+    },
+    {
+      "length": 50,
+      "name": "sma_50",
+      "source": "close",
+      "type": "sma"
+    },
+    {
+      "length": 200,
+      "name": "sma_200",
+      "source": "close",
+      "type": "sma"
+    },
+    {
+      "length": 14,
+      "name": "rsi_14",
+      "source": "close",
+      "type": "rsi"
+    },
+    {
+      "length": 14,
+      "name": "atr_14",
+      "type": "atr"
+    },
+    {
+      "length": 20,
+      "name": "adr_20",
+      "source": "close",
+      "type": "stddev"
+    },
+    {
+      "length": 1,
+      "name": "close_126d_ago",
+      "offset": 126,
+      "source": "close",
+      "type": "sma"
+    },
+    {
+      "length": 1,
+      "name": "high_7d",
+      "offset": 7,
+      "source": "high",
+      "type": "sma"
+    },
+    {
+      "length": 1,
+      "name": "low_7d",
+      "offset": 7,
+      "source": "low",
+      "type": "sma"
+    },
+    {
+      "length": 1,
+      "name": "high_14d",
+      "offset": 14,
+      "source": "high",
+      "type": "sma"
+    },
+    {
+      "length": 1,
+      "name": "low_14d",
+      "offset": 14,
+      "source": "low",
+      "type": "sma"
+    },
+    {
+      "length": 1,
+      "name": "high_21d",
+      "offset": 21,
+      "source": "high",
+      "type": "sma"
+    },
+    {
+      "length": 1,
+      "name": "low_21d",
+      "offset": 21,
+      "source": "low",
+      "type": "sma"
+    },
+    {
+      "length": 20,
+      "name": "vol_20_avg",
+      "source": "volume",
+      "type": "sma"
+    }
+  ],
+  "entry_rule": "close > sma_50 & close > sma_200 & (close / close_126d_ago) > 1.5 & rsi_14 > 40 & volume > vol_20_avg * 1.1 & volume > 1000000 & (adr_20 / close) > 0.035 & ((high <= high_7d & low >= low_7d) | (high <= high_14d & low >= low_14d) | (high <= high_21d & low >= low_21d) | ((close >= sma_10 * 0.98 & close <= sma_10 * 1.02) | (close >= sma_20 * 0.98 & close <= sma_20 * 1.02) | (close >= sma_50 * 0.98 & close <= sma_50 * 1.02)))",
+  "entry_rule_long": "close > sma_50 & close > sma_200 & (close / close_126d_ago) > 1.5 & rsi_14 > 40 & volume > vol_20_avg * 1.1 & volume > 1000000 & (adr_20 / close) > 0.035 & ((high <= high_7d & low >= low_7d) | (high <= high_14d & low >= low_14d) | (high <= high_21d & low >= low_21d) | ((close >= sma_10 * 0.98 & close <= sma_10 * 1.02) | (close >= sma_20 * 0.98 & close <= sma_20 * 1.02) | (close >= sma_50 * 0.98 & close <= sma_50 * 1.02)))",
+  "entry_rule_short": "",
+  "exit_rule": "((abs(sma_10 - sma_20) / sma_20) > 0.05 & close < sma_10) | ((abs(sma_10 - sma_20) / sma_20) <= 0.05 & close < sma_20)",
+  "entry_price_field": "open",
+  "use_intraday_vwap_stop": false,
+  "intraday_interval": "5m",
+  "position_size_mode": "risk_pct",
+  "position_size_pct": 25.0,
+  "risk_per_trade_pct": 0.75,
+  "max_positions": 999,
+  "stop_loss_pct": 6.0,
+  "take_profit_pct": 6.0,
+  "max_holding_days": 999
+}

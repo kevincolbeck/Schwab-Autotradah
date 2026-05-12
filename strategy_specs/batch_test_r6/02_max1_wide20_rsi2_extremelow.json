@@ -1,0 +1,23 @@
+{
+  "name": "R6-02: Max1 Wide20 RSI(2)<10 Extreme",
+  "description": "Ultra extreme dips only: RSI(2)<10 + ZScore<-2.0. Fewer trades but bigger bounces.",
+  "symbols": ["NVDA", "TSLA", "MSFT", "AAPL", "META", "GOOGL", "AMZN", "AMD", "AVGO", "CRM", "NFLX", "ORCL", "UBER", "NOW", "SHOP", "PLTR", "MU", "MRVL", "PANW", "SNPS"],
+  "indicators": [
+    {"type": "sma", "length": 50, "source": "close", "name": "sma_50"},
+    {"type": "zscore", "length": 10, "source": "close", "name": "zscore_10"},
+    {"type": "rsi", "length": 2, "source": "close", "name": "rsi_2"},
+    {"type": "sma", "length": 5, "source": "close", "name": "sma_5"},
+    {"type": "external", "symbol": "SPY", "field": "close", "name": "spy_close"},
+    {"type": "sma", "length": 50, "source": "spy_close", "name": "spy_sma_50"},
+    {"type": "custom", "name": "momentum", "formula": "close / sma_50"}
+  ],
+  "entry_rule_long": "close > sma_50 & spy_close > spy_sma_50 & zscore_10 < -2.0 & rsi_2 < 10 & momentum > 1.0",
+  "exit_rule": "close > sma_5",
+  "entry_price_field": "close",
+  "ranking_field": "momentum",
+  "position_size_mode": "notional_pct",
+  "position_size_pct": 100.0,
+  "max_positions": 1,
+  "stop_loss_pct": 0.0,
+  "max_holding_days": 10
+}

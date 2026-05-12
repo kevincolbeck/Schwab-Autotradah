@@ -1,0 +1,23 @@
+{
+  "name": "Z-Score Mean Reversion (RenTech Statistical)",
+  "description": "Buy extreme z-score dips in uptrending large cap tech. Exit on mean reversion.",
+  "symbols": ["NVDA", "TSLA", "MSFT", "AAPL", "META", "GOOGL", "AMZN", "AMD", "AVGO", "CRM"],
+  "indicators": [
+    {"type": "sma", "length": 20, "source": "close", "name": "sma_20"},
+    {"type": "sma", "length": 200, "source": "close", "name": "sma_200"},
+    {"type": "zscore", "length": 20, "source": "close", "name": "zscore_20"},
+    {"type": "rsi", "length": 14, "source": "close", "name": "rsi_14"},
+    {"type": "atr", "length": 14, "name": "atr_14"},
+    {"type": "sma", "length": 20, "source": "volume", "name": "vol_sma_20"},
+    {"type": "external", "symbol": "SPY", "field": "close", "name": "spy_close"},
+    {"type": "sma", "length": 200, "source": "spy_close", "name": "spy_sma_200"}
+  ],
+  "entry_rule_long": "zscore_20 < -2.0 & close > sma_200 & spy_close > spy_sma_200 & rsi_14 < 35",
+  "exit_rule": "zscore_20 > 0.5 | close < sma_200",
+  "entry_price_field": "close",
+  "position_size_mode": "risk_pct",
+  "risk_per_trade_pct": 1.5,
+  "max_positions": 4,
+  "stop_loss_pct": 5.0,
+  "max_holding_days": 20
+}

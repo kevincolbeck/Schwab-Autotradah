@@ -1,0 +1,442 @@
+[
+  {
+    "starting_capital": 100000.0,
+    "final_equity": 162159.79192928568,
+    "total_return_pct": 62.15979192928568,
+    "cagr": 27.320926192581197,
+    "max_drawdown": 14.971249519445948,
+    "sharpe": 1.2835099788710542,
+    "sortino": 1.314906478755059,
+    "calmar": 1.8248928492638123,
+    "total_trades": 68,
+    "win_rate": 64.70588235294117,
+    "avg_win_r": 4.2885684072280315,
+    "avg_loss_r": -3.496312449437502,
+    "avg_r": 1.5409633989931368,
+    "profit_factor": 2.0467708811849286,
+    "expectancy_r": 1.5409633989931373,
+    "gross_profit": 121542.21557764089,
+    "gross_loss": 59382.42364835528,
+    "max_consec_wins": 12,
+    "max_consec_losses": 6,
+    "avg_holding_days": 8.205882352941176,
+    "regime_stats": {
+      "TREND": {
+        "count": 68,
+        "win_rate": 0.6470588235294118,
+        "avg_r": 1.5409633989931368,
+        "total_pnl": 62159.79192928562
+      }
+    },
+    "exit_stats": {
+      "RULE_EXIT": {
+        "count": 60,
+        "total_r": 110.25652810306389,
+        "total_pnl": 66101.57801822523
+      },
+      "TIME_EXIT": {
+        "count": 8,
+        "total_r": -5.471016971530536,
+        "total_pnl": -3941.7860889396015
+      }
+    },
+    "name": "R7-01: Max2@50% Wide25",
+    "elapsed_sec": 2.4
+  },
+  {
+    "starting_capital": 100000.0,
+    "final_equity": 150095.05199187732,
+    "total_return_pct": 50.09505199187731,
+    "cagr": 22.496271778952902,
+    "max_drawdown": 17.89044982585943,
+    "sharpe": 1.0797532009922328,
+    "sortino": 1.1563570359517412,
+    "calmar": 1.257445843895779,
+    "total_trades": 73,
+    "win_rate": 63.013698630136986,
+    "avg_win_r": 4.0522638735348435,
+    "avg_loss_r": -3.5961696414642366,
+    "avg_r": 1.2233912036036774,
+    "profit_factor": 1.7323174988026733,
+    "expectancy_r": 1.2233912036036767,
+    "gross_profit": 118501.24476179162,
+    "gross_loss": 68406.1927699144,
+    "max_consec_wins": 11,
+    "max_consec_losses": 5,
+    "avg_holding_days": 8.506849315068493,
+    "regime_stats": {
+      "TREND": {
+        "count": 73,
+        "win_rate": 0.6301369863013698,
+        "avg_r": 1.2233912036036774,
+        "total_pnl": 50095.05199187721
+      }
+    },
+    "exit_stats": {
+      "RULE_EXIT": {
+        "count": 63,
+        "total_r": 94.1696435461088,
+        "total_pnl": 53798.73649812176
+      },
+      "TIME_EXIT": {
+        "count": 10,
+        "total_r": -4.862085683040318,
+        "total_pnl": -3703.6845062445855
+      }
+    },
+    "name": "R7-02: Max2@50% Wide30",
+    "elapsed_sec": 3.1
+  },
+  {
+    "starting_capital": 100000.0,
+    "final_equity": 202124.13445225707,
+    "total_return_pct": 102.12413445225708,
+    "cagr": 42.136156002488654,
+    "max_drawdown": 10.628773015950761,
+    "sharpe": 1.8282355493307527,
+    "sortino": 2.2274040416538448,
+    "calmar": 3.9643480897799104,
+    "total_trades": 84,
+    "win_rate": 69.04761904761905,
+    "avg_win_r": 3.756893729365988,
+    "avg_loss_r": -2.728870481621619,
+    "avg_r": 1.749395283107919,
+    "profit_factor": 2.8235352074733626,
+    "expectancy_r": 1.7493952831079191,
+    "gross_profit": 158127.5140600229,
+    "gross_loss": 56003.37960776594,
+    "max_consec_wins": 8,
+    "max_consec_losses": 4,
+    "avg_holding_days": 7.2976190476190474,
+    "regime_stats": {
+      "TREND": {
+        "count": 84,
+        "win_rate": 0.6904761904761905,
+        "avg_r": 1.749395283107919,
+        "total_pnl": 102124.13445225694
+      }
+    },
+    "exit_stats": {
+      "RULE_EXIT": {
+        "count": 79,
+        "total_r": 152.50148093337526,
+        "total_pnl": 106662.12523483441
+      },
+      "TIME_EXIT": {
+        "count": 5,
+        "total_r": -5.552277152310106,
+        "total_pnl": -4537.990782577477
+      }
+    },
+    "name": "R7-03: Max2@50% ZScore-1.2 Wide20",
+    "elapsed_sec": 2.2
+  },
+  {
+    "starting_capital": 100000.0,
+    "final_equity": 177147.13169741118,
+    "total_return_pct": 77.14713169741118,
+    "cagr": 33.0706054338044,
+    "max_drawdown": 12.771785345852289,
+    "sharpe": 1.8253587234661424,
+    "sortino": 2.0974168170951857,
+    "calmar": 2.589348672740125,
+    "total_trades": 76,
+    "win_rate": 76.31578947368422,
+    "avg_win_r": 3.12060688809651,
+    "avg_loss_r": -3.346420258526484,
+    "avg_r": 1.588942563896328,
+    "profit_factor": 2.611667074308914,
+    "expectancy_r": 1.5889425638963277,
+    "gross_profit": 125015.03998144197,
+    "gross_loss": 47867.90828403073,
+    "max_consec_wins": 15,
+    "max_consec_losses": 4,
+    "avg_holding_days": 4.934210526315789,
+    "regime_stats": {
+      "TREND": {
+        "count": 76,
+        "win_rate": 0.7631578947368421,
+        "avg_r": 1.588942563896328,
+        "total_pnl": 77147.13169741123
+      }
+    },
+    "exit_stats": {
+      "TIME_EXIT": {
+        "count": 7,
+        "total_r": -44.74250017047931,
+        "total_pnl": -36152.21712796778
+      },
+      "RULE_EXIT": {
+        "count": 69,
+        "total_r": 165.50213502660011,
+        "total_pnl": 113299.34882537901
+      }
+    },
+    "name": "R7-04: Max2@50% Fast Exit SMA5 Only",
+    "elapsed_sec": 2.1
+  },
+  {
+    "starting_capital": 100000.0,
+    "final_equity": 156254.6854336133,
+    "total_return_pct": 56.25468543361332,
+    "cagr": 24.982795426530167,
+    "max_drawdown": 16.864337818997537,
+    "sharpe": 1.1857100839736963,
+    "sortino": 1.250250375838505,
+    "calmar": 1.4813979472343857,
+    "total_trades": 69,
+    "win_rate": 69.56521739130434,
+    "avg_win_r": 4.054179314297489,
+    "avg_loss_r": -4.593111305234654,
+    "avg_r": 1.4223952127007495,
+    "profit_factor": 1.803046364131884,
+    "expectancy_r": 1.4223952127007498,
+    "gross_profit": 126306.28886055412,
+    "gross_loss": 70051.60342694074,
+    "max_consec_wins": 12,
+    "max_consec_losses": 4,
+    "avg_holding_days": 7.956521739130435,
+    "regime_stats": {
+      "TREND": {
+        "count": 69,
+        "win_rate": 0.6956521739130435,
+        "avg_r": 1.4223952127007495,
+        "total_pnl": 56254.68543361339
+      }
+    },
+    "exit_stats": {
+      "RULE_EXIT": {
+        "count": 63,
+        "total_r": 107.16070960387955,
+        "total_pnl": 62712.06001361518
+      },
+      "TIME_EXIT": {
+        "count": 6,
+        "total_r": -9.01543992752779,
+        "total_pnl": -6457.374580001786
+      }
+    },
+    "name": "R7-05: Max2@50% RSI(3) Wide25",
+    "elapsed_sec": 2.8
+  },
+  {
+    "starting_capital": 100000.0,
+    "final_equity": 144880.95465243398,
+    "total_return_pct": 44.88095465243398,
+    "cagr": 20.35124410643221,
+    "max_drawdown": 13.698874325320768,
+    "sharpe": 0.9574097836250809,
+    "sortino": 0.9849193036783725,
+    "calmar": 1.4856143375821262,
+    "total_trades": 84,
+    "win_rate": 61.904761904761905,
+    "avg_win_r": 3.4988984425434215,
+    "avg_loss_r": -3.172888477544217,
+    "avg_r": 0.9572653301290831,
+    "profit_factor": 1.6711836191106513,
+    "expectancy_r": 0.957265330129083,
+    "gross_profit": 111749.32475941507,
+    "gross_loss": 66868.37010698105,
+    "max_consec_wins": 8,
+    "max_consec_losses": 4,
+    "avg_holding_days": 7.773809523809524,
+    "regime_stats": {
+      "TREND": {
+        "count": 84,
+        "win_rate": 0.6190476190476191,
+        "avg_r": 0.9572653301290831,
+        "total_pnl": 44880.95465243403
+      }
+    },
+    "exit_stats": {
+      "RULE_EXIT": {
+        "count": 77,
+        "total_r": 87.86023637328108,
+        "total_pnl": 49457.70305985893
+      },
+      "TIME_EXIT": {
+        "count": 7,
+        "total_r": -7.449948642438096,
+        "total_pnl": -4576.748407424882
+      }
+    },
+    "name": "R7-06: Max2@50% RSI2+ZScore12 Wide25",
+    "elapsed_sec": 2.7
+  },
+  {
+    "starting_capital": 100000.0,
+    "final_equity": 243818.4155761747,
+    "total_return_pct": 143.81841557617471,
+    "cagr": 56.09927165208279,
+    "max_drawdown": 17.773601801417605,
+    "sharpe": 2.065448117887237,
+    "sortino": 2.620008931863841,
+    "calmar": 3.1563254470800834,
+    "total_trades": 67,
+    "win_rate": 73.13432835820896,
+    "avg_win_r": 4.368976575952605,
+    "avg_loss_r": -3.1041911071073853,
+    "avg_r": 2.3612598849812643,
+    "profit_factor": 3.4287942105625957,
+    "expectancy_r": 2.3612598849812643,
+    "gross_profit": 203032.33125117168,
+    "gross_loss": 59213.915674997064,
+    "max_consec_wins": 13,
+    "max_consec_losses": 6,
+    "avg_holding_days": 7.701492537313433,
+    "regime_stats": {
+      "TREND": {
+        "count": 67,
+        "win_rate": 0.7313432835820896,
+        "avg_r": 2.3612598849812643,
+        "total_pnl": 143818.41557617462
+      }
+    },
+    "exit_stats": {
+      "RULE_EXIT": {
+        "count": 61,
+        "total_r": 161.77775777514722,
+        "total_pnl": 148665.36380471682
+      },
+      "TIME_EXIT": {
+        "count": 6,
+        "total_r": -3.5733454814025425,
+        "total_pnl": -4846.948228542251
+      }
+    },
+    "name": "R7-07: Max2@60% Wide20 (120% peak)",
+    "elapsed_sec": 2.1
+  },
+  {
+    "starting_capital": 100000.0,
+    "final_equity": 179954.49787414612,
+    "total_return_pct": 79.95449787414613,
+    "cagr": 34.120167797878274,
+    "max_drawdown": 12.77239625275234,
+    "sharpe": 1.7847326591067212,
+    "sortino": 2.04882281486117,
+    "calmar": 2.6713990955710973,
+    "total_trades": 71,
+    "win_rate": 71.83098591549296,
+    "avg_win_r": 3.928438331309444,
+    "avg_loss_r": -3.7555281718882108,
+    "avg_r": 1.7639407247748935,
+    "profit_factor": 2.328979869890092,
+    "expectancy_r": 1.7639407247748937,
+    "gross_profit": 140116.80709013026,
+    "gross_loss": 60162.30921598416,
+    "max_consec_wins": 13,
+    "max_consec_losses": 4,
+    "avg_holding_days": 6.140845070422535,
+    "regime_stats": {
+      "TREND": {
+        "count": 71,
+        "win_rate": 0.7183098591549296,
+        "avg_r": 1.7639407247748935,
+        "total_pnl": 79954.4978741461
+      }
+    },
+    "exit_stats": {
+      "TIME_EXIT": {
+        "count": 29,
+        "total_r": -23.973776261481976,
+        "total_pnl": -26098.89332412314
+      },
+      "RULE_EXIT": {
+        "count": 42,
+        "total_r": 149.21356772049947,
+        "total_pnl": 106053.39119826924
+      }
+    },
+    "name": "R7-08: Max2@50% RSI2 Max 8 Day Hold",
+    "elapsed_sec": 2.1
+  },
+  {
+    "starting_capital": 100000.0,
+    "final_equity": 198834.48583400506,
+    "total_return_pct": 98.83448583400506,
+    "cagr": 40.975541667699545,
+    "max_drawdown": 16.321958129201846,
+    "sharpe": 1.6857582777302385,
+    "sortino": 2.3018205385941455,
+    "calmar": 2.51045501669249,
+    "total_trades": 61,
+    "win_rate": 70.49180327868852,
+    "avg_win_r": 5.378288897353222,
+    "avg_loss_r": -4.581408371273315,
+    "avg_r": 2.4393618344798185,
+    "profit_factor": 2.473855017034532,
+    "expectancy_r": 2.439361834479818,
+    "gross_profit": 165892.97170384636,
+    "gross_loss": 67058.48586984137,
+    "max_consec_wins": 12,
+    "max_consec_losses": 5,
+    "avg_holding_days": 9.065573770491802,
+    "regime_stats": {
+      "TREND": {
+        "count": 61,
+        "win_rate": 0.7049180327868853,
+        "avg_r": 2.4393618344798185,
+        "total_pnl": 98834.485834005
+      }
+    },
+    "exit_stats": {
+      "RULE_EXIT": {
+        "count": 50,
+        "total_r": 177.21714853527158,
+        "total_pnl": 122148.79490455007
+      },
+      "TIME_EXIT": {
+        "count": 11,
+        "total_r": -28.416076632002635,
+        "total_pnl": -23314.30907054508
+      }
+    },
+    "name": "R7-09: Max2@50% RSI2 Exit RSI3>70",
+    "elapsed_sec": 2.2
+  },
+  {
+    "starting_capital": 100000.0,
+    "final_equity": 144432.82136012145,
+    "total_return_pct": 44.43282136012145,
+    "cagr": 20.165097212965712,
+    "max_drawdown": 12.763280661409606,
+    "sharpe": 0.9585007907406321,
+    "sortino": 1.0404460135784976,
+    "calmar": 1.5799305639290573,
+    "total_trades": 90,
+    "win_rate": 62.22222222222222,
+    "avg_win_r": 3.362789274122039,
+    "avg_loss_r": -3.1922636089558027,
+    "avg_r": 0.8864359627370765,
+    "profit_factor": 1.6170374308820987,
+    "expectancy_r": 0.8864359627370768,
+    "gross_profit": 116442.74999054761,
+    "gross_loss": 72009.92863042616,
+    "max_consec_wins": 7,
+    "max_consec_losses": 4,
+    "avg_holding_days": 7.977777777777778,
+    "regime_stats": {
+      "TREND": {
+        "count": 90,
+        "win_rate": 0.6222222222222222,
+        "avg_r": 0.8864359627370765,
+        "total_pnl": 44432.82136012145
+      }
+    },
+    "exit_stats": {
+      "RULE_EXIT": {
+        "count": 81,
+        "total_r": 90.6810792088494,
+        "total_pnl": 50894.34423107782
+      },
+      "TIME_EXIT": {
+        "count": 9,
+        "total_r": -10.901842562512503,
+        "total_pnl": -6461.522870956371
+      }
+    },
+    "name": "R7-10: Max2@50% RSI2+ZScore12 Wide30",
+    "elapsed_sec": 3.0
+  }
+]

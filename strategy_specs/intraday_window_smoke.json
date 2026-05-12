@@ -1,0 +1,27 @@
+{
+  "name": "Intraday Window Smoke",
+  "description": "",
+  "symbols": [
+    "TQQQ"
+  ],
+  "indicators": [
+    {
+      "name": "vwap_proxy",
+      "type": "vwap_proxy"
+    }
+  ],
+  "entry_rule": "qqq_open <= lag(qqq_close,1) * 0.9975",
+  "entry_rule_long": "qqq_open <= lag(qqq_close,1) * 0.9975",
+  "entry_rule_short": "qqq_open >= lag(qqq_close,1) * 1.0025",
+  "exit_rule": "(position_side == 'LONG' & close < vwap_proxy) | (position_side == 'SHORT' & close > vwap_proxy)",
+  "entry_price_field": "open",
+  "use_intraday_vwap_stop": true,
+  "intraday_interval": "5m",
+  "position_size_mode": "risk_pct",
+  "position_size_pct": 10.0,
+  "risk_per_trade_pct": 0.75,
+  "max_positions": 1,
+  "stop_loss_pct": 3.0,
+  "take_profit_pct": 0.0,
+  "max_holding_days": 0
+}

@@ -1,0 +1,27 @@
+{
+  "name": "R2: RenTech Stat Arb (RSI+ZScore+Momentum)",
+  "description": "Combine RSI oversold + Z-score extreme + momentum confirmation. Higher frequency trading.",
+  "symbols": ["NVDA", "TSLA", "MSFT", "AAPL", "META", "GOOGL", "AMZN", "AMD", "AVGO", "CRM", "NFLX"],
+  "indicators": [
+    {"type": "sma", "length": 20, "source": "close", "name": "sma_20"},
+    {"type": "sma", "length": 50, "source": "close", "name": "sma_50"},
+    {"type": "ema", "length": 10, "source": "close", "name": "ema_10"},
+    {"type": "zscore", "length": 10, "source": "close", "name": "zscore_10"},
+    {"type": "rsi", "length": 3, "source": "close", "name": "rsi_3"},
+    {"type": "atr", "length": 14, "name": "atr_14"},
+    {"type": "sma", "length": 20, "source": "volume", "name": "vol_sma_20"},
+    {"type": "external", "symbol": "SPY", "field": "close", "name": "spy_close"},
+    {"type": "sma", "length": 50, "source": "spy_close", "name": "spy_sma_50"},
+    {"type": "custom", "name": "momentum", "formula": "close / sma_50"},
+    {"type": "custom", "name": "stop_dist", "formula": "atr_14 * 1.0"}
+  ],
+  "entry_rule_long": "close > sma_50 & spy_close > spy_sma_50 & zscore_10 < -1.5 & rsi_3 < 20 & momentum > 1.0",
+  "exit_rule": "rsi_3 > 80 | zscore_10 > 1.0",
+  "entry_price_field": "close",
+  "ranking_field": "momentum",
+  "position_size_mode": "risk_pct",
+  "risk_per_trade_pct": 3.0,
+  "max_positions": 5,
+  "stop_loss_field": "stop_dist",
+  "max_holding_days": 10
+}

@@ -1,0 +1,94 @@
+"""Enums and constants for the momentum trading bot."""
+
+from enum import Enum, auto
+
+
+class Regime(Enum):
+    TREND = "TREND"
+    CHOP = "CHOP"
+    RISK_OFF = "RISK_OFF"
+
+
+class TradeStatus(Enum):
+    PENDING_ENTRY = auto()
+    OPEN = auto()
+    BREAKEVEN = auto()
+    CLOSED_STOP = auto()
+    CLOSED_RULE = auto()
+    CLOSED_EOD = auto()
+    CLOSED_REGIME = auto()
+    CLOSED_MANUAL = auto()
+    CLOSED_KILL = auto()
+    CANCELLED = auto()
+
+
+class OrderSide(Enum):
+    BUY = "BUY"
+    SELL = "SELL"
+
+
+class OrderType(Enum):
+    STOP_LIMIT = "STOP_LIMIT"
+    MARKET = "MARKET"
+    LIMIT = "LIMIT"
+    MARKET_ON_CLOSE = "MARKET_ON_CLOSE"
+
+
+class OrderStatus(Enum):
+    PENDING = "PENDING"
+    WORKING = "WORKING"
+    FILLED = "FILLED"
+    CANCELLED = "CANCELLED"
+    REJECTED = "REJECTED"
+    EXPIRED = "EXPIRED"
+
+
+class EventType(Enum):
+    SIGNAL_EVALUATED = "SIGNAL_EVALUATED"
+    ENTRY_TRIGGERED = "ENTRY_TRIGGERED"
+    ORDER_PLACED = "ORDER_PLACED"
+    ORDER_FILLED = "ORDER_FILLED"
+    ORDER_CANCELLED = "ORDER_CANCELLED"
+    ORDER_REJECTED = "ORDER_REJECTED"
+    STOP_UPDATED = "STOP_UPDATED"
+    STOP_TO_BREAKEVEN = "STOP_TO_BREAKEVEN"
+    EOD_EXIT = "EOD_EXIT"
+    REGIME_CHANGE = "REGIME_CHANGE"
+    RISK_OFF_LIQUIDATION = "RISK_OFF_LIQUIDATION"
+    MANUAL_CLOSE_DETECTED = "MANUAL_CLOSE_DETECTED"
+    MANUAL_PARTIAL_DETECTED = "MANUAL_PARTIAL_DETECTED"
+    MANUAL_STOP_MODIFIED = "MANUAL_STOP_MODIFIED"
+    KILL_SWITCH_ACTIVATED = "KILL_SWITCH_ACTIVATED"
+    KILL_SWITCH_DEACTIVATED = "KILL_SWITCH_DEACTIVATED"
+    DAILY_LOSS_LOCK = "DAILY_LOSS_LOCK"
+    AUTH_FAILURE = "AUTH_FAILURE"
+    DATA_STALE = "DATA_STALE"
+    RECONCILIATION = "RECONCILIATION"
+    ENGINE_START = "ENGINE_START"
+    ENGINE_STOP = "ENGINE_STOP"
+    BOT_MANAGEMENT_REENABLED = "BOT_MANAGEMENT_REENABLED"
+
+
+class ManualOverrideMode(Enum):
+    RESPECT = "RESPECT"
+    REENABLE = "REENABLE"
+
+
+# Market hours (Eastern Time)
+MARKET_OPEN_HOUR = 9
+MARKET_OPEN_MINUTE = 30
+MARKET_CLOSE_HOUR = 16
+MARKET_CLOSE_MINUTE = 0
+
+# Entry trigger window defaults
+ENTRY_WINDOW_START_HOUR = 10
+ENTRY_WINDOW_START_MINUTE = 0
+ENTRY_WINDOW_END_HOUR = 15
+ENTRY_WINDOW_END_MINUTE = 40
+
+# Schwab API
+SCHWAB_AUTH_URL = "https://api.schwabapi.com/v1/oauth/authorize"
+SCHWAB_TOKEN_URL = "https://api.schwabapi.com/v1/oauth/token"
+SCHWAB_TRADER_BASE = "https://api.schwabapi.com/trader/v1"
+SCHWAB_MARKETDATA_BASE = "https://api.schwabapi.com/marketdata/v1"
+SCHWAB_RATE_LIMIT_PER_MIN = 120

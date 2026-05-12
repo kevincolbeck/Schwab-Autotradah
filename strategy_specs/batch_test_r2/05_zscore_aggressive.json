@@ -1,0 +1,24 @@
+{
+  "name": "R2: Z-Score Aggressive (Higher Risk, More Trades)",
+  "description": "Loosened z-score threshold to -1.5 for more signals. Higher risk sizing. Wider exit.",
+  "symbols": ["NVDA", "TSLA", "MSFT", "AAPL", "META", "GOOGL", "AMZN", "AMD", "AVGO", "CRM"],
+  "indicators": [
+    {"type": "sma", "length": 20, "source": "close", "name": "sma_20"},
+    {"type": "sma", "length": 50, "source": "close", "name": "sma_50"},
+    {"type": "sma", "length": 200, "source": "close", "name": "sma_200"},
+    {"type": "zscore", "length": 20, "source": "close", "name": "zscore_20"},
+    {"type": "rsi", "length": 5, "source": "close", "name": "rsi_5"},
+    {"type": "atr", "length": 14, "name": "atr_14"},
+    {"type": "external", "symbol": "SPY", "field": "close", "name": "spy_close"},
+    {"type": "sma", "length": 200, "source": "spy_close", "name": "spy_sma_200"},
+    {"type": "custom", "name": "stop_dist", "formula": "atr_14 * 1.2"}
+  ],
+  "entry_rule_long": "zscore_20 < -1.5 & close > sma_200 & spy_close > spy_sma_200 & rsi_5 < 40",
+  "exit_rule": "zscore_20 > 1.0 | close < sma_50",
+  "entry_price_field": "close",
+  "position_size_mode": "risk_pct",
+  "risk_per_trade_pct": 3.0,
+  "max_positions": 5,
+  "stop_loss_field": "stop_dist",
+  "max_holding_days": 30
+}

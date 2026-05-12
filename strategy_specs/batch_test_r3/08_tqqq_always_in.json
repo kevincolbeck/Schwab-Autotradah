@@ -1,0 +1,18 @@
+{
+  "name": "R3: TQQQ Always-In (QQQ>SMA200 Only Filter)",
+  "description": "Simplest approach: 100% TQQQ whenever QQQ is above SMA200. Widest possible filter to avoid missing rallies.",
+  "symbols": ["TQQQ"],
+  "indicators": [
+    {"type": "external", "symbol": "QQQ", "field": "close", "name": "qqq_close"},
+    {"type": "sma", "length": 200, "source": "qqq_close", "name": "qqq_sma_200"},
+    {"type": "sma", "length": 200, "source": "close", "name": "sma_200"}
+  ],
+  "entry_rule_long": "qqq_close > qqq_sma_200",
+  "exit_rule": "qqq_close < qqq_sma_200 * 0.98",
+  "entry_price_field": "close",
+  "position_size_mode": "notional_pct",
+  "position_size_pct": 100.0,
+  "max_positions": 1,
+  "stop_loss_pct": 0.0,
+  "max_holding_days": 0
+}

@@ -1,0 +1,31 @@
+{
+  "name": "ICT HTF Support/Resistance Breakout",
+  "description": "Break above previous 20-day high with FVG confirmation and volume. Uses HTF trend via 200 SMA and SPY filter.",
+  "symbols": ["NVDA", "TSLA", "MSFT", "AAPL", "META", "GOOGL", "AMZN", "AMD"],
+  "indicators": [
+    {"type": "external", "symbol": "SPY", "field": "close", "name": "spy_close"},
+    {"type": "sma", "length": 50, "source": "spy_close", "name": "spy_sma_50"},
+    {"type": "sma", "length": 200, "source": "close", "name": "sma_200"},
+    {"type": "sma", "length": 50, "source": "close", "name": "sma_50"},
+    {"type": "ema", "length": 21, "source": "close", "name": "ema_21"},
+    {"type": "ema", "length": 9, "source": "close", "name": "ema_9"},
+    {"type": "atr", "length": 14, "name": "atr_14"},
+    {"type": "sma", "length": 20, "source": "volume", "name": "vol_sma_20"},
+    {"type": "rolling_max", "length": 20, "source": "high", "name": "high_20"},
+    {"type": "rolling_max", "length": 50, "source": "high", "name": "high_50"},
+    {"type": "rolling_min", "length": 20, "source": "low", "name": "low_20"},
+    {"type": "custom", "name": "range_pct", "formula": "(high_20 - low_20) / close"},
+    {"type": "custom", "name": "stop_dist", "formula": "atr_14 * 1.2"}
+  ],
+  "entry_rule_long": "close > high_20 & close > sma_200 & sma_50 > sma_200 & spy_close > spy_sma_50 & volume > vol_sma_20 * 1.5 & range_pct < 0.15 & atr_14 / close > 0.015",
+  "exit_rule": "close < ema_21",
+  "entry_price_field": "close",
+  "position_size_mode": "risk_pct",
+  "risk_per_trade_pct": 1.5,
+  "max_positions": 5,
+  "stop_loss_field": "stop_dist",
+  "take_profit_rules": [
+    {"trigger_r": 2.0, "action": "sell_partial", "sell_pct_of_position": 50.0, "move_stop_to_pct": 0.0}
+  ],
+  "max_holding_days": 0
+}

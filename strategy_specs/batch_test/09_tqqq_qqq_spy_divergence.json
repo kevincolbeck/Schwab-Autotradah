@@ -1,0 +1,24 @@
+{
+  "name": "TQQQ QQQ-SPY Relative Strength",
+  "description": "RenTech-style cross-asset: trade TQQQ when QQQ shows relative strength vs SPY and is trending up.",
+  "symbols": ["TQQQ"],
+  "indicators": [
+    {"type": "external", "symbol": "QQQ", "field": "close", "name": "qqq_close"},
+    {"type": "external", "symbol": "SPY", "field": "close", "name": "spy_close"},
+    {"type": "sma", "length": 50, "source": "qqq_close", "name": "qqq_sma_50"},
+    {"type": "sma", "length": 200, "source": "qqq_close", "name": "qqq_sma_200"},
+    {"type": "ema", "length": 21, "source": "qqq_close", "name": "qqq_ema_21"},
+    {"type": "sma", "length": 10, "source": "close", "name": "sma_10"},
+    {"type": "custom", "name": "qqq_spy_ratio", "formula": "qqq_close / spy_close"},
+    {"type": "custom", "name": "ratio_sma_20", "formula": "(qqq_close / spy_close).rolling(20).mean()"},
+    {"type": "custom", "name": "ratio_rising", "formula": "(qqq_close / spy_close) > (qqq_close / spy_close).rolling(20).mean()"}
+  ],
+  "entry_rule_long": "qqq_close > qqq_sma_50 & qqq_sma_50 > qqq_sma_200 & qqq_close > qqq_ema_21 & ratio_rising",
+  "exit_rule": "close < sma_10 | qqq_close < qqq_ema_21",
+  "entry_price_field": "close",
+  "position_size_mode": "notional_pct",
+  "position_size_pct": 100.0,
+  "max_positions": 1,
+  "stop_loss_pct": 8.0,
+  "max_holding_days": 0
+}
