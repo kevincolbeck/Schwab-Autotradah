@@ -327,7 +327,7 @@ async def get_iv_history(ticker: str, days: int = 30, db: AsyncSession = Depends
 # display it next to the button (definitions field).
 
 @router.post("/bot/start")
-async def bot_start():
+async def bot_start(db: AsyncSession = Depends(get_db)):
     """
     Resume signal evaluation and paper trading.
     The bot will evaluate signals and open new positions normally.
@@ -335,6 +335,11 @@ async def bot_start():
     from backend.bot_engine import set_bot_running, set_bot_paused
     set_bot_running(True)
     set_bot_paused(False)
+    result = await db.execute(select(BotState).where(BotState.id == 1))
+    state = result.scalar_one_or_none()
+    if state:
+        state.status = "RUNNING"
+        await db.commit()
     return {
         "status": "ok",
         "bot_status": "RUNNING",
@@ -343,13 +348,18 @@ async def bot_start():
 
 
 @router.post("/bot/stop")
-async def bot_stop():
+async def bot_stop(db: AsyncSession = Depends(get_db)):
     """
     Graceful stop — halt new entries but let open positions run to SL/TP naturally.
     Signal evaluation continues (data still logged). No new trades will open.
     """
     from backend.bot_engine import set_bot_paused
     set_bot_paused(True)
+    result = await db.execute(select(BotState).where(BotState.id == 1))
+    state = result.scalar_one_or_none()
+    if state:
+        state.status = "PAUSED"
+        await db.commit()
     return {
         "status": "ok",
         "bot_status": "PAUSED",
@@ -373,7 +383,7 @@ async def bot_emergency_close():
 
 
 @router.post("/bot/kill")
-async def bot_kill():
+async def bot_kill(db: AsyncSession = Depends(get_db)):
     """
     Hard stop — halt all evaluation immediately. No new positions, no monitoring.
     Existing positions are NOT closed (they will be picked up on next restart).
@@ -381,6 +391,11 @@ async def bot_kill():
     """
     from backend.bot_engine import set_bot_running
     set_bot_running(False)
+    result = await db.execute(select(BotState).where(BotState.id == 1))
+    state = result.scalar_one_or_none()
+    if state:
+        state.status = "STOPPED"
+        await db.commit()
     return {
         "status": "ok",
         "bot_status": "STOPPED",
