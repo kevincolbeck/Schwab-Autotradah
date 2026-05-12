@@ -68,7 +68,8 @@ class RvolMonitor:
         if total_vol <= 0:
             return
 
-        if not self._volume_initialized:
+        if not self._volume_initialized or total_vol < self._session_start_volume:
+            # First quote, or daily counter reset overnight — re-baseline.
             self._session_start_volume = total_vol
             self._volume_initialized = True
 
